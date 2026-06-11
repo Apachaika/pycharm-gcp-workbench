@@ -1,15 +1,98 @@
 name: Release
 
+# Two triggers:
+#   1. Push to main that touches either build.gradle.kts → reads `version = "..."`
+#      from both build lines and, if no `v<version>` tag exists yet, builds both
+#      ZIPs and publishes a GitHub Release.
+#   2. Manual workflow_dispatch from the Actions tab — same flow, with an
+#      optional `force` checkbox to re-publish even when the tag already exists.
+#
+# Both build.gradle.kts files MUST carry the same version; the workflow refuses
+# to release on a mismatch.
+
 on:
   push:
-    tags: ["v*"]
+    branches: [main]
+    paths:
+      - "build.gradle.kts"
+      - "pycharm-plugin-2026.1/build.gradle.kts"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Release even if the v<version> tag already exists (re-runs build, overwrites assets)"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
+  detect:
+    name: Detect version + tag status
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.read.outputs.version }}
+      tag: ${{ steps.read.outputs.tag }}
+      should_release: ${{ steps.decide.outputs.should_release }}
+    steps:
+      - name: Checkout (with tags)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read plugin version from both build.gradle.kts
+        id: read
+        run: |
+          set -euo pipefail
+          ROOT_VERSION=$(grep -E '^version = "' build.gradle.kts | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
+          SUB_VERSION=$(grep -E '^version = "' pycharm-plugin-2026.1/build.gradle.kts | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
+
+          if [[ -z "$ROOT_VERSION" ]]; then
+            echo "::error file=build.gradle.kts::Could not read 'version = \"...\"' from build.gradle.kts"
+            exit 1
+          fi
+          if [[ "$ROOT_VERSION" != "$SUB_VERSION" ]]; then
+            echo "::error::Version mismatch between build lines: root=$ROOT_VERSION, 2026.1=$SUB_VERSION. Bump both files to the same value."
+            exit 1
+          fi
+          if ! [[ "$ROOT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-].*)?$ ]]; then
+            echo "::error::Version '$ROOT_VERSION' is not a valid semver string"
+            exit 1
+          fi
+
+          echo "version=$ROOT_VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$ROOT_VERSION"     >> "$GITHUB_OUTPUT"
+          echo "Detected plugin version: $ROOT_VERSION (tag would be v$ROOT_VERSION)"
+
+      - name: Decide whether to release this version
+        id: decide
+        env:
+          TAG: ${{ steps.read.outputs.tag }}
+          FORCE: ${{ github.event.inputs.force }}
+        run: |
+          set -euo pipefail
+          if git rev-parse "refs/tags/$TAG" >/dev/null 2>&1; then
+            if [[ "$FORCE" == "true" ]]; then
+              echo "::warning::Tag $TAG already exists, but force=true → re-releasing."
+              echo "should_release=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "Tag $TAG already exists → nothing to release. Bump version in both build.gradle.kts files (or rerun this workflow with force=true) to publish."
+              echo "should_release=false" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "Tag $TAG does not exist → will release."
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
     name: Build (${{ matrix.line.name }})
+    needs: detect
+    if: needs.detect.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -53,11 +136,12 @@ jobs:
           retention-days: 14
 
   release:
-    name: Publish GitHub Release
-    needs: build
+    name: Tag + Publish GitHub Release
+    needs: [detect, build]
+    if: needs.detect.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout (for changelog parsing)
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Download built ZIPs
@@ -81,14 +165,35 @@ jobs:
           echo "Final assets:"
           ls -lh
 
-      - name: Create GitHub Release
+      - name: Extract changelog section for this version
+        env:
+          VERSION: ${{ needs.detect.outputs.version }}
+        run: |
+          set -euo pipefail
+          : > release_body.md
+          if [[ -f CHANGELOG.md ]]; then
+            awk -v ver="$VERSION" '
+              $0 ~ "^## \\[" ver "\\]" { capture=1; next }
+              capture && /^## \[/        { exit }
+              capture                    { print }
+            ' CHANGELOG.md > release_body.md || true
+          fi
+          if [[ ! -s release_body.md ]]; then
+            echo "_No CHANGELOG.md section found for v$VERSION — see the auto-generated commit list below._" > release_body.md
+          fi
+          echo "Release body:"
+          cat release_body.md
+
+      - name: Create GitHub Release + tag
         uses: softprops/action-gh-release@v2
         with:
-          name: ${{ github.ref_name }}
-          tag_name: ${{ github.ref_name }}
+          name: ${{ needs.detect.outputs.tag }}
+          tag_name: ${{ needs.detect.outputs.tag }}
+          target_commitish: ${{ github.sha }}
           draft: false
           prerelease: false
           generate_release_notes: true
+          body_path: release_body.md
           fail_on_unmatched_files: true
           files: |
             dist/vertex-workbench-pycharm-pycharm-2025.3.x-build-253.zip

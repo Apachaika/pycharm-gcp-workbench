@@ -106,15 +106,29 @@ Built ZIPs land in `build/distributions/`. For an IDE sandbox: `./gradlew runIde
 
 ## Releasing
 
-Releases are fully automated by [.github/workflows/release.yml](.github/workflows/release.yml):
+Releases are **fully automated** by [.github/workflows/release.yml](.github/workflows/release.yml) — bump the version, push to `main`, the rest happens on GitHub Actions:
 
 ```bash
-# bump version in build.gradle.kts (both lines) and CHANGELOG.md, commit, then:
-git tag v0.3.47
-git push origin v0.3.47
+# 1. Bump version (same number!) in BOTH build.gradle.kts files:
+#       version = "0.3.47"
+#       -> build.gradle.kts
+#       -> pycharm-plugin-2026.1/build.gradle.kts
+# 2. Add a `## [0.3.47]` section at the top of CHANGELOG.md.
+# 3. Commit + push to main:
+git add -A
+git commit -m "Release v0.3.47"
+git push origin main
 ```
 
-The workflow builds both ZIPs, renames them to the stable filenames the README links to, and creates a GitHub Release with both attached. Every push and PR also runs the test matrix via [.github/workflows/ci.yml](.github/workflows/ci.yml). See [CHANGELOG.md](CHANGELOG.md) for the per-version history.
+The workflow then:
+
+1. Reads `version = "..."` from both `build.gradle.kts` files (refuses to run on a version mismatch).
+2. Checks whether the tag `v0.3.47` already exists. If yes — no-op; bump the version again.
+3. Runs `./gradlew test buildPlugin` for **both** build lines in parallel.
+4. Renames the produced ZIPs to the stable filenames the README links to.
+5. Creates the `v0.3.47` git tag, opens a GitHub Release, attaches both ZIPs, and uses the matching `## [0.3.47]` block from `CHANGELOG.md` as the release notes (with an auto-generated commit list appended).
+
+Need to re-publish without bumping the version (e.g. to fix a release asset)? Open the **Actions** tab → **Release** → **Run workflow**, tick `force`. Every push and PR also runs the full test matrix via [.github/workflows/ci.yml](.github/workflows/ci.yml).
 
 ## Privacy
 
