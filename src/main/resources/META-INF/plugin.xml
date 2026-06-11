@@ -1,0 +1,74 @@
+<idea-plugin>
+    <id>dev.vertexworkbench.pycharm</id>
+    <name>Workbench Connector for GCP</name>
+    <vendor email="xapachai@gmail.com">Oleksii Filimonchuk</vendor>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.python</depends>
+    <depends>PythonCore</depends>
+    <depends>Pythonid</depends>
+    <depends>intellij.jupyter</depends>
+    <depends>org.jetbrains.plugins.terminal</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <notificationGroup id="Vertex Workbench" displayType="BALLOON"/>
+        <fileEditorProvider implementation="dev.vertexworkbench.pycharm.terminal.WorkbenchTerminalFileEditorProvider"/>
+        <projectService serviceImplementation="dev.vertexworkbench.pycharm.auth.GcloudAuthService"/>
+        <projectService serviceImplementation="dev.vertexworkbench.pycharm.api.WorkbenchApiClient"/>
+        <projectService serviceImplementation="dev.vertexworkbench.pycharm.proxy.LocalJupyterProxyService"/>
+        <projectService serviceImplementation="dev.vertexworkbench.pycharm.contents.JupyterContentsClient"/>
+        <projectService serviceImplementation="dev.vertexworkbench.pycharm.remote.RemoteCommandService"/>
+        <projectService serviceImplementation="dev.vertexworkbench.pycharm.remote.RemoteSearchService"/>
+        <projectService serviceImplementation="dev.vertexworkbench.pycharm.remote.RemoteRunService"/>
+        <projectService serviceImplementation="dev.vertexworkbench.pycharm.remote.RemoteStatusService"/>
+        <projectService serviceImplementation="dev.vertexworkbench.pycharm.remote.RemoteBootstrapService"/>
+        <projectService serviceImplementation="dev.vertexworkbench.pycharm.workspace.RemoteWorkspaceService"/>
+        <projectService serviceImplementation="dev.vertexworkbench.pycharm.workspace.RemoteFileSyncService"/>
+        <projectService serviceImplementation="dev.vertexworkbench.pycharm.workspace.RemoteSelectiveSyncService"/>
+        <projectService serviceImplementation="dev.vertexworkbench.pycharm.imports.RemoteImportIndexService"/>
+        <projectService serviceImplementation="dev.vertexworkbench.pycharm.imports.RemoteImportResolverService"/>
+        <projectService serviceImplementation="dev.vertexworkbench.pycharm.git.RemoteGitCommandService"/>
+        <projectService serviceImplementation="dev.vertexworkbench.pycharm.git.RemoteGitRepositoryService"/>
+        <projectService serviceImplementation="dev.vertexworkbench.pycharm.git.RemoteGitStatusService"/>
+        <projectService serviceImplementation="dev.vertexworkbench.pycharm.git.RemoteGitActionsService"/>
+        <projectService serviceImplementation="dev.vertexworkbench.pycharm.terminal.WorkbenchTerminalService"/>
+        <projectService serviceImplementation="dev.vertexworkbench.pycharm.jupyter.WorkbenchJupyterConnectionRegistrar"/>
+        <projectService serviceImplementation="dev.vertexworkbench.pycharm.jupyter.WorkbenchKernelAutoStarter"/>
+        <projectService serviceImplementation="dev.vertexworkbench.pycharm.jupyter.RemoteNotebookSessionService"/>
+        <projectService serviceImplementation="dev.vertexworkbench.pycharm.jupyter.RemoteSessionLookup"/>
+        <applicationService serviceImplementation="dev.vertexworkbench.pycharm.jupyter.WorkbenchJupyterConnectionRegistry"/>
+        <projectService serviceImplementation="dev.vertexworkbench.pycharm.connection.WorkbenchConnectionService"/>
+        <projectService serviceImplementation="dev.vertexworkbench.pycharm.settings.WorkbenchSettings"/>
+        <projectConfigurable parentId="tools"
+                             displayName="Vertex Workbench"
+                             instance="dev.vertexworkbench.pycharm.settings.WorkbenchConfigurable"/>
+        <toolWindow id="Vertex Workbench"
+                    anchor="right"
+                    icon="/icons/workbench.svg"
+                    factoryClass="dev.vertexworkbench.pycharm.ui.WorkbenchToolWindowFactory"/>
+        <gotoDeclarationHandler implementation="dev.vertexworkbench.pycharm.imports.RemoteImportGotoDeclarationHandler"/>
+    </extensions>
+
+    <extensions defaultExtensionNs="com.intellij.jupyter.core">
+        <connectionProvider implementation="dev.vertexworkbench.pycharm.jupyter.WorkbenchJupyterConnectionProvider"/>
+        <notebookSessionFactory implementation="dev.vertexworkbench.pycharm.jupyter.WorkbenchNotebookSessionFactory"/>
+    </extensions>
+
+    <actions>
+        <group id="VertexWorkbench.Actions"
+               text="Vertex Workbench"
+               popup="true">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+            <action id="VertexWorkbench.Connect"
+                    class="dev.vertexworkbench.pycharm.actions.ConnectWorkbenchAction"
+                    text="Connect"
+                    icon="/icons/workbench.svg"
+                    description="Connect to a Vertex AI Workbench Jupyter instance"/>
+            <action id="VertexWorkbench.StopProxy"
+                    class="dev.vertexworkbench.pycharm.actions.StopProxyAction"
+                    text="Stop Connection"
+                    icon="/icons/workbench.svg"
+                    description="Stop the active Vertex Workbench connection"/>
+        </group>
+    </actions>
+</idea-plugin>

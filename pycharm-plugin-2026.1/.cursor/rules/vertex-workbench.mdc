@@ -1,0 +1,23 @@
+---
+description: Vertex Workbench PyCharm plugin — use project docs and skills before broad exploration
+alwaysApply: true
+---
+
+# Vertex Workbench plugin (2026.1.x line)
+
+- Architecture and flows: `docs/ARCHITECTURE.md`
+- Features, versions, fixes: `docs/FEATURES.md`
+- Agent skills: `.cursor/skills/vertex-workbench-map/`, `.cursor/skills/intellij-plugin-build/`, `.cursor/skills/dual-version-maintenance/`
+
+When changing behavior: keep two network paths separate (localhost proxy vs direct Contents HTTPS). Do not persist GCP tokens. Match existing Kotlin/IntelliJ `@Service` patterns in `dev.vertexworkbench.pycharm`.
+
+Build: `./scripts/build-release.sh` (runs `./gradlew test buildPlugin`) / `./gradlew runIde` (Gradle 9, Java 17). This source tree targets PyCharm Professional 2026.1.2 (`sinceBuild=261`).
+
+## Two build lines (always port behavior changes to both)
+
+| Line | Root | Target IDE |
+|------|------|------------|
+| 2025.3.x | `/Users/oleksii/Work/pycharm-plugin` | PyCharm Professional 2025.3.5/2025.3.6 (`sinceBuild=253`) |
+| 2026.1.x | `/Users/oleksii/Work/pycharm-plugin/pycharm-plugin-2026.1` (this folder) | PyCharm Professional 2026.1.2 (`sinceBuild=261`) |
+
+When fixing a bug or adding behavior that is not Jupyter-runtime-specific, apply the same patch to both lines, run `./gradlew test` and `./scripts/build-release.sh` in each, and bump the same version number in both. See `.cursor/skills/dual-version-maintenance/SKILL.md`.

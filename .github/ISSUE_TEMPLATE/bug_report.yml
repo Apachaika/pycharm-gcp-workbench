@@ -1,0 +1,93 @@
+name: Bug report
+description: Something broke in the plugin (connection, file sync, notebook, Git, terminal, etc.)
+title: "[bug] "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please fill in everything below — the
+        PyCharm / plugin / `gcloud` version triple and a piece of `idea.log` cut the
+        triage time roughly in half.
+
+  - type: input
+    id: plugin-version
+    attributes:
+      label: Plugin version
+      description: From **Settings → Plugins → Workbench Connector for GCP** (e.g. `0.3.46`).
+      placeholder: "0.3.46"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: pycharm-line
+    attributes:
+      label: PyCharm build line
+      options:
+        - "PyCharm Professional 2025.3.x (sinceBuild=253)"
+        - "PyCharm Professional 2026.1.x (sinceBuild=261)"
+        - Other / EAP
+    validations:
+      required: true
+
+  - type: input
+    id: pycharm-build
+    attributes:
+      label: Exact PyCharm build
+      description: From **PyCharm → About** (e.g. `PyCharm 2025.3.5, build PY-253.33514.19`).
+      placeholder: "PyCharm 2025.3.5, build PY-253.33514.19"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS
+        - Linux
+        - Windows
+    validations:
+      required: true
+
+  - type: input
+    id: gcloud-version
+    attributes:
+      label: gcloud version
+      description: Output of `gcloud --version` (first line is enough).
+      placeholder: "Google Cloud SDK 470.0.0"
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do? What did you expect? What did you get instead?
+      placeholder: |
+        1. Connected to Workbench instance `my-wbi`.
+        2. Opened `notebooks/foo.ipynb` from the tree.
+        3. Expected: cells run on the remote kernel.
+        4. Actual: PyCharm popped the local "Select Jupyter Kernel" chooser.
+    validations:
+      required: true
+
+  - type: textarea
+    id: idea-log
+    attributes:
+      label: Relevant `idea.log` lines
+      description: |
+        From **Help → Show Log in Finder/Explorer**. Paste only the lines that mention
+        `vertex-workbench`, `WorkbenchConnectionService`, `RemoteFileSyncService`,
+        `WorkbenchNotebook*`, `GcloudAuthService`, or any obvious stack trace.
+      render: shell
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: secrets-check
+    attributes:
+      label: Privacy check
+      options:
+        - label: I confirm the pasted log does not contain my GCP access token, project IDs I don't want public, or any other private value.
+          required: true

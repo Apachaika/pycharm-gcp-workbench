@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security report
+    url: https://github.com/Apachaika/pycharm-gcp-workbench/security/advisories/new
+    about: Report a security vulnerability privately (do NOT open a public issue).
+  - name: Releases
+    url: https://github.com/Apachaika/pycharm-gcp-workbench/releases
+    about: Download the latest plugin ZIP for PyCharm 2025.3.x or 2026.1.x.

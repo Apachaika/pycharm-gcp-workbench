@@ -1,0 +1,95 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build (${{ matrix.line.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        line:
+          - name: "2025.3.x"
+            dir: "."
+            pycharm: "2025.3.5"
+            suffix: "pycharm-2025.3.x-build-253"
+          - name: "2026.1.x"
+            dir: "pycharm-plugin-2026.1"
+            pycharm: "2026.1.2"
+            suffix: "pycharm-2026.1.x-build-261"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Test + build plugin
+        working-directory: ${{ matrix.line.dir }}
+        run: |
+          ./gradlew test buildPlugin \
+            -PtargetPyCharmVersion=${{ matrix.line.pycharm }} \
+            -PartifactSuffix=${{ matrix.line.suffix }} \
+            --no-daemon --stacktrace
+
+      - name: Upload built ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: zip-${{ matrix.line.suffix }}
+          path: ${{ matrix.line.dir }}/build/distributions/*.zip
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (for changelog parsing)
+        uses: actions/checkout@v4
+
+      - name: Download built ZIPs
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Rename to stable filenames
+        run: |
+          set -euo pipefail
+          cd dist
+          echo "Downloaded ZIPs:"
+          ls -lh
+          for f in *pycharm-2025.3.x*.zip; do
+            mv -v "$f" "vertex-workbench-pycharm-pycharm-2025.3.x-build-253.zip"
+          done
+          for f in *pycharm-2026.1.x*.zip; do
+            mv -v "$f" "vertex-workbench-pycharm-pycharm-2026.1.x-build-261.zip"
+          done
+          echo "Final assets:"
+          ls -lh
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            dist/vertex-workbench-pycharm-pycharm-2025.3.x-build-253.zip
+            dist/vertex-workbench-pycharm-pycharm-2026.1.x-build-261.zip

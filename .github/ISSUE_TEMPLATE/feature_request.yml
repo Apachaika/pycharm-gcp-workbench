@@ -1,0 +1,44 @@
+name: Feature request
+description: Suggest a new capability or improvement for the plugin
+title: "[feat] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: What are you trying to do today, and what's painful about the current flow?
+      placeholder: |
+        When I'm working with multiple Workbench instances in the same PyCharm window
+        I have to keep disconnecting and re-connecting to switch between them, and
+        each Connect re-fetches the WBI list which is slow on large GCP projects.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What should the plugin do? Mock up a menu / dialog / tool window if it helps.
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you've considered
+      description: e.g. an existing PyCharm feature, a different plugin, a shell workaround.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: build-line
+    attributes:
+      label: Which build line(s) is this for?
+      multiple: true
+      options:
+        - "PyCharm 2025.3.x"
+        - "PyCharm 2026.1.x"
+        - Both
+    validations:
+      required: true

@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test + build (${{ matrix.line.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        line:
+          - name: "2025.3.x"
+            dir: "."
+            pycharm: "2025.3.5"
+            suffix: "pycharm-2025.3.x-build-253"
+          - name: "2026.1.x"
+            dir: "pycharm-plugin-2026.1"
+            pycharm: "2026.1.2"
+            suffix: "pycharm-2026.1.x-build-261"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Test + build plugin
+        working-directory: ${{ matrix.line.dir }}
+        run: |
+          ./gradlew test buildPlugin \
+            -PtargetPyCharmVersion=${{ matrix.line.pycharm }} \
+            -PartifactSuffix=${{ matrix.line.suffix }} \
+            --no-daemon --stacktrace
+
+      - name: Upload plugin ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugin-${{ matrix.line.name }}-${{ github.sha }}
+          path: ${{ matrix.line.dir }}/build/distributions/*.zip
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload test reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports-${{ matrix.line.name }}-${{ github.sha }}
+          path: |
+            ${{ matrix.line.dir }}/build/reports/tests/
+            ${{ matrix.line.dir }}/build/test-results/
+          if-no-files-found: ignore
+          retention-days: 14

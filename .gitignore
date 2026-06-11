@@ -1,0 +1,31 @@
+# --- Local secrets (never commit) -------------------------------------------
+secrets.properties
+.env
+.env.*
+
+# --- Gradle / IntelliJ build outputs ----------------------------------------
+.gradle/
+.kotlin/
+.intellijPlatform/
+build/
+**/build/
+out/
+**/out/
+
+# --- IDE files --------------------------------------------------------------
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# --- OS noise ---------------------------------------------------------------
+.DS_Store
+Thumbs.db
+
+# --- AI tooling (local-only) ------------------------------------------------
+.codegraph/
+.claude/
+.cursor/mcp.json
+
+# --- Misc -------------------------------------------------------------------
+*.log
