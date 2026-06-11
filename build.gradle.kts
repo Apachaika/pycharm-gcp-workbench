@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "dev.vertexworkbench"
-version = "0.3.46"
+version = "0.3.47"
 
 val targetPyCharmVersion = providers.gradleProperty("targetPyCharmVersion").getOrElse("2025.3.5")
 val artifactSuffix = providers.gradleProperty("artifactSuffix").orNull
@@ -72,13 +72,13 @@ dependencies {
 
 intellijPlatform {
     pluginConfiguration {
-        id = "dev.vertexworkbench.pycharm"
+        id = "dev.vertexworkbench.connector"
         name = "Workbench Connector for GCP"
         version = project.version.toString()
 
         ideaVersion {
             sinceBuild = "253"
-            untilBuild = "260.*"
+            untilBuild = "253.*"
         }
 
         vendor {

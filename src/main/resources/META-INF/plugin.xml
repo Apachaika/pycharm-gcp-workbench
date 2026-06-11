@@ -1,5 +1,5 @@
 <idea-plugin>
-    <id>dev.vertexworkbench.pycharm</id>
+    <id>dev.vertexworkbench.connector</id>
     <name>Workbench Connector for GCP</name>
     <vendor email="xapachai@gmail.com">Oleksii Filimonchuk</vendor>
 

@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.47] — 2026-06-11
+
+### Changed
+- **Plugin id renamed** from `dev.vertexworkbench.pycharm` to `dev.vertexworkbench.connector`. JetBrains Marketplace rejects plugin ids that contain trademarked product names such as `pycharm`. Java/Kotlin package names (`dev.vertexworkbench.pycharm.*`) remain unchanged — only the id in `plugin.xml` and `build.gradle.kts` was updated.
+- Tightened `untilBuild` for the 2025.3.x line from the invalid `260.*` (PyCharm 2026.0 was never released — JetBrains went 2025.3 → 2026.1, skipping 254-260) to `253.*`, which matches the supported 2025.3.x range and clears the Marketplace upload warning. The 2026.1.x line was already `261.*` and is unchanged.
+
 ## [0.3.46] — 2026-06-11
 
 ### Fixed
@@ -135,7 +141,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 See [docs/FEATURES.md](docs/FEATURES.md) for the full per-feature breakdown.
 
-[Unreleased]: https://github.com/Apachaika/pycharm-gcp-workbench/compare/v0.3.46...HEAD
+[Unreleased]: https://github.com/Apachaika/pycharm-gcp-workbench/compare/v0.3.47...HEAD
+[0.3.47]: https://github.com/Apachaika/pycharm-gcp-workbench/releases/tag/v0.3.47
 [0.3.46]: https://github.com/Apachaika/pycharm-gcp-workbench/releases/tag/v0.3.46
 [0.3.45]: https://github.com/Apachaika/pycharm-gcp-workbench/releases/tag/v0.3.45
 [0.3.44]: https://github.com/Apachaika/pycharm-gcp-workbench/releases/tag/v0.3.44
