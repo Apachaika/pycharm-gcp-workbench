@@ -134,7 +134,7 @@ jobs:
           java-version: "17"
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
 
       - name: Test + build plugin
         working-directory: ${{ matrix.line.dir }}
