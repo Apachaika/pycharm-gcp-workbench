@@ -117,30 +117,48 @@ Built ZIPs land in `build/distributions/`. For an IDE sandbox: `./gradlew runIde
 
 ## Releasing
 
-Releases are **fully automated** by [.github/workflows/release.yml](.github/workflows/release.yml) — bump the version, push to `main`, the rest happens on GitHub Actions:
+Releases are **fully automated by conventional commits** via [.github/workflows/auto-release.yml](.github/workflows/auto-release.yml). You do not edit the version, the changelog, or the Marketplace "What's New" text. You write good commit subjects and push to `main` — the bot does the rest.
+
+### Quick rules
+
+| Commit subject prefix | Bump | Becomes a release? |
+|---|---|---|
+| `fix:` / `perf:` | patch (`0.3.49` → `0.3.50`) | yes |
+| `feat:` | minor (`0.3.49` → `0.4.0`) | yes |
+| `feat!:` *or* `BREAKING CHANGE:` in commit body | major (`0.3.49` → `1.0.0`) | yes |
+| `chore:` / `docs:` / `ci:` / `refactor:` / `test:` / `style:` | none | no |
+
+What you write after the prefix is what users see in JetBrains Marketplace → *What's New* and in [`CHANGELOG.md`](CHANGELOG.md) — write it for end users.
 
 ```bash
-# 1. Bump version (same number!) in BOTH build.gradle.kts files:
-#       version = "0.3.48"
-#       -> build.gradle.kts
-#       -> pycharm-plugin-2026.1/build.gradle.kts
-# 2. Add a `## [0.3.48]` section at the top of CHANGELOG.md.
-# 3. Commit + push to main:
+# Make a change, commit with a conventional subject, push.
 git add -A
-git commit -m "Release v0.3.48"
+git commit -m "fix: clear deprecated FileEditor.disposeEditor warning"
 git push origin main
+
+# ...that's it. Within ~5 minutes the plugin appears as v0.3.50 on
+# JetBrains Marketplace AND as a GitHub Release with both ZIPs attached.
 ```
 
-The workflow then:
+### What the workflow does on each push
 
-1. Reads `version = "..."` from both `build.gradle.kts` files (refuses to run on a version mismatch).
-2. Checks whether the tag `v0.3.48` already exists. If yes — no-op; bump the version again.
-3. Runs `./gradlew test buildPlugin` for **both** build lines in parallel.
-4. Auto-publishes both ZIPs to JetBrains Marketplace via `./gradlew publishPlugin` (skipped with a notice when the `JETBRAINS_MARKETPLACE_TOKEN` secret is not configured).
-5. Renames the produced ZIPs to the stable filenames the README links to.
-6. Creates the `v0.3.48` git tag, opens a GitHub Release, attaches both ZIPs, and uses the matching `## [0.3.48]` block from `CHANGELOG.md` as the release notes (with an auto-generated commit list appended).
+1. Scans every commit subject since the last `v*` tag and decides the bump type. If no `fix:` / `feat:` / `perf:` commits — exits with a "skipped" notice (no release).
+2. Bumps `val pluginBaseVersion = "..."` in **both** `build.gradle.kts` files atomically via `sed`.
+3. Runs [`scripts/update-release-notes.py`](scripts/update-release-notes.py) to insert a `<h3>X.Y.Z</h3>` block at the top of `changeNotes` in both `build.gradle.kts` files, plus a matching `## [X.Y.Z] — DATE` section in [`CHANGELOG.md`](CHANGELOG.md) (grouped into Added / Fixed / Performance from commit prefixes).
+4. Commits the bump back to `main` as `github-actions[bot]` with `chore(release): X.Y.Z [skip auto-release]` (three independent loop guards prevent re-trigger).
+5. Builds both ZIPs (2025.3.x publishes as `X.Y.Z`, 2026.1.x publishes as `X.Y.Z-261` — see the "Marketplace version suffix" section in [.cursor/skills/dual-version-maintenance/SKILL.md](.cursor/skills/dual-version-maintenance/SKILL.md) for the why).
+6. Uploads both ZIPs to JetBrains Marketplace via `./gradlew publishPlugin`. A publish failure for either line is surfaced as an `::error` annotation on the Actions run page but does NOT block the GitHub Release.
+7. Renames the ZIPs to stable filenames, extracts the freshly-generated `## [X.Y.Z]` block from `CHANGELOG.md` as the release body, creates the `vX.Y.Z` tag, and opens the GitHub Release with both ZIPs attached.
 
-Need to re-publish without bumping the version (e.g. to fix a release asset)? Open the **Actions** tab → **Release** → **Run workflow**, tick `force`. Want a GitHub-only release without touching Marketplace? Tick `skip_marketplace`. Every push and PR also runs the full test matrix via [.github/workflows/ci.yml](.github/workflows/ci.yml).
+### Manual / fallback release
+
+[.github/workflows/manual-release.yml](.github/workflows/manual-release.yml) is the old "read version from `build.gradle.kts`, build, publish" workflow trimmed to `workflow_dispatch` only. Open the **Actions** tab → **Manual release (fallback)** → **Run workflow** when you need to:
+
+- Re-release the same version after a botched publish — tick `force`.
+- Ship a GitHub-only release during a Marketplace outage — tick `skip_marketplace`.
+- Recover from an `auto-release.yml` mid-flight failure (bump commit is on `main` but no Release was created).
+
+Every push and PR also runs the full test matrix via [.github/workflows/ci.yml](.github/workflows/ci.yml).
 
 ### Required GitHub Actions secrets (set once)
 
@@ -148,12 +166,13 @@ Open <https://github.com/Apachaika/pycharm-gcp-workbench/settings/secrets/action
 
 | Secret | Required? | Where to get it |
 |--------|-----------|-----------------|
+| `RELEASE_PAT` | **Yes** (for auto-release) | <https://github.com/settings/personal-access-tokens/new> → fine-grained PAT scoped to this repo with **Contents: Read and write**, **Workflows: Read and write**, **Metadata: Read-only**. The built-in `GITHUB_TOKEN` cannot push commits that re-trigger other workflows — that's why we need a PAT. |
 | `JETBRAINS_MARKETPLACE_TOKEN` | Yes (for Marketplace publish) | <https://plugins.jetbrains.com/author/me/tokens> → permanent token with **Marketplace: upload plugins** scope |
 | `JETBRAINS_CERTIFICATE_CHAIN` | Optional (for signed ZIPs) | <https://plugins.jetbrains.com/docs/intellij/plugin-signing.html> |
 | `JETBRAINS_PRIVATE_KEY` | Optional | (same) |
 | `JETBRAINS_PRIVATE_KEY_PASSWORD` | Optional | (same) |
 
-Without the Marketplace token, the workflow still builds the ZIPs and creates the GitHub Release — only the Marketplace upload step is skipped.
+Without `RELEASE_PAT`, `auto-release.yml` fails at the push-back step — the bump commit is created locally in the runner but cannot be pushed to `main`. Without `JETBRAINS_MARKETPLACE_TOKEN`, the Marketplace upload step is skipped with a notice but the GitHub Release is still created.
 
 ## Privacy
 

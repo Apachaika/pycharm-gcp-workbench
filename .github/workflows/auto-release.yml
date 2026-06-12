@@ -1,0 +1,322 @@
+name: Auto-release
+
+# Single-shot release pipeline triggered by conventional-commit pushes to main.
+#
+# Flow:
+#   1. push to main with a `fix:` / `feat:` / `feat!:` / `BREAKING CHANGE:` commit
+#   2. this workflow parses every commit subject since the last v* tag,
+#      decides the bump type (patch / minor / major / none)
+#   3. if a bump is warranted:
+#      a) updates `pluginBaseVersion` in BOTH build.gradle.kts files
+#      b) inserts a `<h3>X.Y.Z</h3>` block in BOTH `changeNotes` strings
+#      c) inserts a `## [X.Y.Z] — DATE` section in CHANGELOG.md
+#      d) commits the bump back to main from github-actions[bot] (with a
+#         `[skip auto-release]` marker in the message to prevent recursion)
+#      e) builds both ZIPs (2025.3.x and 2026.1.x), uploads each to JetBrains
+#         Marketplace via `./gradlew publishPlugin` (with the standard `-261`
+#         suffix scheme on the 2026.1.x line — see dual-version-maintenance
+#         skill for why), and creates a GitHub Release with both ZIPs attached.
+#
+# IMPORTANT: pushes done inside this workflow use `secrets.RELEASE_PAT`, NOT
+# the default `secrets.GITHUB_TOKEN`. The built-in `GITHUB_TOKEN` cannot push
+# in a way that triggers other workflows (GitHub safety feature against infinite
+# loops). We do not need other workflows to re-trigger here, but we DO want
+# `ci.yml` to run against the bump commit as a smoke check — for that the PAT
+# is required.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: auto-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Bump + build + publish + release
+    runs-on: ubuntu-latest
+    # Three independent guards against infinite loops:
+    #   1. ignore commits authored by github-actions[bot] itself
+    #   2. ignore commits whose message begins with `chore(release):`
+    #   3. ignore commits whose message contains `[skip auto-release]`
+    if: |
+      github.actor != 'github-actions[bot]' &&
+      !startsWith(github.event.head_commit.message, 'chore(release):') &&
+      !contains(github.event.head_commit.message, '[skip auto-release]')
+    steps:
+      - name: Checkout main (with PAT for push back)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_PAT }}
+
+      - name: Configure git identity for the bot commit
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+      - name: Read current pluginBaseVersion
+        id: current
+        run: |
+          set -euo pipefail
+          v=$(grep -E '^val pluginBaseVersion = "' build.gradle.kts | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
+          if [[ -z "$v" ]]; then
+            echo "::error file=build.gradle.kts::Could not read pluginBaseVersion"
+            exit 1
+          fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "Current pluginBaseVersion: $v"
+
+      - name: Find last release tag
+        id: last_tag
+        run: |
+          set -euo pipefail
+          last=$(git tag -l 'v*' --sort=-v:refname | head -1 || true)
+          echo "tag=$last" >> "$GITHUB_OUTPUT"
+          if [[ -z "$last" ]]; then
+            echo "No prior v* tag — will analyze all commits."
+          else
+            echo "Last release tag: $last"
+          fi
+
+      - name: Collect commit subjects since last tag
+        id: commits
+        run: |
+          set -euo pipefail
+          last='${{ steps.last_tag.outputs.tag }}'
+          if [[ -z "$last" ]]; then
+            range='HEAD'
+          else
+            range="${last}..HEAD"
+          fi
+          # Subject lines only, oldest-to-newest so CHANGELOG reads chronologically
+          git log --reverse --pretty=format:'%s' "$range" > /tmp/all-commits.txt
+          echo "All commits since $last:" 
+          cat /tmp/all-commits.txt
+          echo
+
+          # Filter to only conventional release-worthy subjects (fix/feat/perf)
+          grep -E '^(feat|fix|perf)(\([^)]+\))?!?:' /tmp/all-commits.txt > /tmp/release-commits.txt || true
+          echo "Release-worthy commits:"
+          if [[ -s /tmp/release-commits.txt ]]; then
+            cat /tmp/release-commits.txt
+          else
+            echo "  (none)"
+          fi
+
+      - name: Decide bump type
+        id: bump
+        run: |
+          set -euo pipefail
+          # major if any commit has `!:` (e.g. `feat!:`) or `BREAKING CHANGE:` in body
+          # — for simplicity we only look at subjects with `!:` for now
+          # minor if any `feat:` (or `feat(scope):`)
+          # patch if any `fix:` or `perf:`
+          bump='none'
+          if grep -qE '^(feat|fix|perf)(\([^)]+\))?!:' /tmp/all-commits.txt; then
+            bump='major'
+          elif grep -qE '^feat(\([^)]+\))?:' /tmp/all-commits.txt; then
+            bump='minor'
+          elif grep -qE '^(fix|perf)(\([^)]+\))?:' /tmp/all-commits.txt; then
+            bump='patch'
+          fi
+          echo "Detected bump type: $bump"
+          echo "bump=$bump" >> "$GITHUB_OUTPUT"
+
+      - name: Skip if no release-worthy commits
+        if: steps.bump.outputs.bump == 'none'
+        run: |
+          echo "::notice title=Auto-release skipped::No conventional fix:/feat:/perf:/breaking commits since last tag — nothing to release."
+
+      - name: Compute next semver
+        id: next
+        if: steps.bump.outputs.bump != 'none'
+        env:
+          CURRENT: ${{ steps.current.outputs.version }}
+          BUMP: ${{ steps.bump.outputs.bump }}
+        run: |
+          set -euo pipefail
+          IFS='.' read -r major minor patch <<< "$CURRENT"
+          case "$BUMP" in
+            major) next="$((major+1)).0.0" ;;
+            minor) next="${major}.$((minor+1)).0" ;;
+            patch) next="${major}.${minor}.$((patch+1))" ;;
+          esac
+          echo "Next version: $next (was $CURRENT, bump=$BUMP)"
+          echo "version=$next" >> "$GITHUB_OUTPUT"
+          echo "tag=v$next" >> "$GITHUB_OUTPUT"
+
+      - name: Refuse to re-release an existing tag
+        if: steps.bump.outputs.bump != 'none'
+        env:
+          NEW_TAG: ${{ steps.next.outputs.tag }}
+        run: |
+          if git rev-parse "refs/tags/$NEW_TAG" >/dev/null 2>&1; then
+            echo "::error title=Tag already exists::$NEW_TAG already exists in this repo. Either the bot ran twice for the same change set, or pluginBaseVersion in main is out of sync with the actual tag history. Aborting."
+            exit 1
+          fi
+
+      - name: Bump pluginBaseVersion in both build.gradle.kts
+        if: steps.bump.outputs.bump != 'none'
+        env:
+          NEW: ${{ steps.next.outputs.version }}
+        run: |
+          set -euo pipefail
+          for f in build.gradle.kts pycharm-plugin-2026.1/build.gradle.kts; do
+            sed -i -E "s/^val pluginBaseVersion = \"[^\"]+\"/val pluginBaseVersion = \"$NEW\"/" "$f"
+          done
+          echo "After bump:"
+          grep '^val pluginBaseVersion' build.gradle.kts pycharm-plugin-2026.1/build.gradle.kts
+
+      - name: Insert changeNotes block + CHANGELOG.md section
+        if: steps.bump.outputs.bump != 'none'
+        env:
+          NEW: ${{ steps.next.outputs.version }}
+          REPO: ${{ github.repository }}
+        run: |
+          python3 scripts/update-release-notes.py \
+            --version "$NEW" \
+            --repo "$REPO" \
+            --commits-file /tmp/release-commits.txt
+
+      - name: Commit and push the bump
+        if: steps.bump.outputs.bump != 'none'
+        env:
+          NEW: ${{ steps.next.outputs.version }}
+        run: |
+          set -euo pipefail
+          git add build.gradle.kts pycharm-plugin-2026.1/build.gradle.kts CHANGELOG.md
+          if git diff --cached --quiet; then
+            echo "::error::Nothing was staged for the bump commit — this shouldn't happen. Check the bump and notes-insertion steps above."
+            exit 1
+          fi
+          git commit -m "chore(release): $NEW [skip auto-release]"
+          git push origin HEAD:main
+          echo "Bump commit pushed. Tag will be created by the GitHub Release step at the end."
+
+      # ----- Build + publish below run on the post-bump tree -----
+
+      - name: Set up Java 17 (Temurin)
+        if: steps.bump.outputs.bump != 'none'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        if: steps.bump.outputs.bump != 'none'
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build + publish 2025.3.x to Marketplace
+        if: steps.bump.outputs.bump != 'none' && github.event.inputs.skip_marketplace != 'true'
+        id: publish_253
+        continue-on-error: true
+        env:
+          JETBRAINS_MARKETPLACE_TOKEN: ${{ secrets.JETBRAINS_MARKETPLACE_TOKEN }}
+          JETBRAINS_CERTIFICATE_CHAIN:  ${{ secrets.JETBRAINS_CERTIFICATE_CHAIN }}
+          JETBRAINS_PRIVATE_KEY:        ${{ secrets.JETBRAINS_PRIVATE_KEY }}
+          JETBRAINS_PRIVATE_KEY_PASSWORD: ${{ secrets.JETBRAINS_PRIVATE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          ./gradlew test buildPlugin \
+            -PtargetPyCharmVersion=2025.3.5 \
+            -PartifactSuffix=pycharm-2025.3.x-build-253 \
+            --no-daemon --stacktrace
+          if [[ -z "${JETBRAINS_MARKETPLACE_TOKEN}" ]]; then
+            echo "::notice title=Marketplace publish skipped (2025.3.x)::JETBRAINS_MARKETPLACE_TOKEN secret is not set."
+          else
+            ./gradlew publishPlugin \
+              -PtargetPyCharmVersion=2025.3.5 \
+              -PartifactSuffix=pycharm-2025.3.x-build-253 \
+              --no-daemon --stacktrace
+          fi
+
+      - name: Build + publish 2026.1.x to Marketplace
+        if: steps.bump.outputs.bump != 'none' && github.event.inputs.skip_marketplace != 'true'
+        id: publish_261
+        continue-on-error: true
+        working-directory: pycharm-plugin-2026.1
+        env:
+          JETBRAINS_MARKETPLACE_TOKEN: ${{ secrets.JETBRAINS_MARKETPLACE_TOKEN }}
+          JETBRAINS_CERTIFICATE_CHAIN:  ${{ secrets.JETBRAINS_CERTIFICATE_CHAIN }}
+          JETBRAINS_PRIVATE_KEY:        ${{ secrets.JETBRAINS_PRIVATE_KEY }}
+          JETBRAINS_PRIVATE_KEY_PASSWORD: ${{ secrets.JETBRAINS_PRIVATE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          ./gradlew test buildPlugin \
+            -PtargetPyCharmVersion=2026.1.2 \
+            -PartifactSuffix=pycharm-2026.1.x-build-261 \
+            --no-daemon --stacktrace
+          if [[ -z "${JETBRAINS_MARKETPLACE_TOKEN}" ]]; then
+            echo "::notice title=Marketplace publish skipped (2026.1.x)::JETBRAINS_MARKETPLACE_TOKEN secret is not set."
+          else
+            ./gradlew publishPlugin \
+              -PtargetPyCharmVersion=2026.1.2 \
+              -PartifactSuffix=pycharm-2026.1.x-build-261 \
+              --no-daemon --stacktrace
+          fi
+
+      - name: Annotate Marketplace publish outcome
+        if: always() && steps.bump.outputs.bump != 'none'
+        run: |
+          if [[ "${{ steps.publish_253.outcome }}" == "failure" ]]; then
+            echo "::error title=Marketplace publish FAILED (2025.3.x)::./gradlew publishPlugin for 2025.3.x exited non-zero. The GitHub Release is still created (the ZIP is attached). Either rerun the workflow with the issue fixed, or upload dist/vertex-workbench-pycharm-pycharm-2025.3.x-build-253.zip manually at https://plugins.jetbrains.com/plugin/edit"
+          fi
+          if [[ "${{ steps.publish_261.outcome }}" == "failure" ]]; then
+            echo "::error title=Marketplace publish FAILED (2026.1.x)::./gradlew publishPlugin for 2026.1.x exited non-zero. The GitHub Release is still created. Re-upload dist/vertex-workbench-pycharm-pycharm-2026.1.x-build-261.zip manually at https://plugins.jetbrains.com/plugin/edit"
+          fi
+
+      - name: Stage ZIPs + rename to stable filenames
+        if: steps.bump.outputs.bump != 'none'
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          shopt -s nullglob
+          for f in build/distributions/*.zip; do cp -v "$f" dist/; done
+          for f in pycharm-plugin-2026.1/build/distributions/*.zip; do cp -v "$f" dist/; done
+          cd dist
+          for f in *pycharm-2025.3.x*.zip; do mv -v "$f" "vertex-workbench-pycharm-pycharm-2025.3.x-build-253.zip"; done
+          for f in *pycharm-2026.1.x*.zip; do mv -v "$f" "vertex-workbench-pycharm-pycharm-2026.1.x-build-261.zip"; done
+          echo "Final release assets:"
+          ls -lh
+
+      - name: Extract release body from CHANGELOG.md
+        if: steps.bump.outputs.bump != 'none'
+        env:
+          NEW: ${{ steps.next.outputs.version }}
+        run: |
+          set -euo pipefail
+          awk -v ver="$NEW" '
+            $0 ~ "^## \\[" ver "\\]" { capture=1; next }
+            capture && /^## \[/        { exit }
+            capture                    { print }
+          ' CHANGELOG.md > release_body.md
+          if [[ ! -s release_body.md ]]; then
+            echo "_Release notes are auto-generated from the conventional commits below._" > release_body.md
+          fi
+          echo "----- release_body.md -----"
+          cat release_body.md
+          echo "---------------------------"
+
+      - name: Create GitHub Release + tag
+        if: steps.bump.outputs.bump != 'none'
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ steps.next.outputs.tag }}
+          tag_name: ${{ steps.next.outputs.tag }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          body_path: release_body.md
+          fail_on_unmatched_files: true
+          files: |
+            dist/vertex-workbench-pycharm-pycharm-2025.3.x-build-253.zip
+            dist/vertex-workbench-pycharm-pycharm-2026.1.x-build-261.zip
+        env:
+          # Use the PAT so the resulting tag and release events can trigger
+          # downstream workflows (e.g. a future webhook) if/when we add any.
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PAT }}

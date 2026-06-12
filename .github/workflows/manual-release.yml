@@ -1,21 +1,22 @@
-name: Release
+name: Manual release (fallback)
 
-# Two triggers:
-#   1. Push to main that touches either build.gradle.kts → reads `version = "..."`
-#      from both build lines and, if no `v<version>` tag exists yet, builds both
-#      ZIPs and publishes a GitHub Release.
-#   2. Manual workflow_dispatch from the Actions tab — same flow, with an
-#      optional `force` checkbox to re-publish even when the tag already exists.
+# Fallback release pipeline — kept around for hotfixes and emergencies.
 #
-# Both build.gradle.kts files MUST carry the same version; the workflow refuses
-# to release on a mismatch.
+# The primary release flow is `.github/workflows/auto-release.yml`, which
+# triggers automatically on conventional-commit pushes to main. Use this
+# manual workflow only when:
+#   - You need to re-release an existing version (overwrite Marketplace ZIPs
+#     after fixing a botched release) — set `force=true`.
+#   - You want to publish a GitHub Release without touching Marketplace
+#     (during a Marketplace outage, for example) — set `skip_marketplace=true`.
+#   - You've manually bumped `pluginBaseVersion` in both build.gradle.kts
+#     outside the conventional-commits flow and want to publish that.
+#
+# This workflow reads `val pluginBaseVersion = "..."` from BOTH build.gradle.kts
+# files and refuses to release on a mismatch. Trigger from the Actions tab:
+# https://github.com/Apachaika/pycharm-gcp-workbench/actions/workflows/release.yml
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "build.gradle.kts"
-      - "pycharm-plugin-2026.1/build.gradle.kts"
   workflow_dispatch:
     inputs:
       force:

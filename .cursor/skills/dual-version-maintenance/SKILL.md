@@ -67,90 +67,154 @@ Touch only one line if the change is in:
    example, `RemoteGitPushHintParser` in 2026.1 vs
    `RemoteGitPushUrlExtractor` in 2025.3) — do NOT rename to unify; the
    user has decided to keep them separate.
-4. Bump the version in both `build.gradle.kts` files to the same value.
-5. **Update `changeNotes` (What's New) in both `build.gradle.kts` files**
-   — see the dedicated section below. The Marketplace "What's New" tab
-   reads this field; if you skip it, users see stale notes for the new
-   version. Mandatory for every version bump, even doc-only ones.
-6. Add a matching `## [0.3.N]` section at the top of the root
-   `CHANGELOG.md` (Keep-a-Changelog format). Update the `[Unreleased]`
-   compare link to point at the new tag.
-7. Update both `docs/FEATURES.md` (header version + the appropriate
+4. Update both `docs/FEATURES.md` (header version + the appropriate
    feature table row + a `Version notes` row).
-8. Update both `docs/ARCHITECTURE.md` if the change touches an
+5. Update both `docs/ARCHITECTURE.md` if the change touches an
    architectural section.
-9. Run `./gradlew test` in **both** lines (use the dedicated
+6. Run `./gradlew test` in **both** lines (use the dedicated
    `working_directory` arg). For 2026.1 the working directory is
    `/Users/oleksii/Work/pycharm-plugin/pycharm-plugin-2026.1`.
-10. Build both ZIPs with `./scripts/build-release.sh` (do NOT pass
-    `clean` — old ZIPs are preserved).
-11. Verify each ZIP lands in its own `build/distributions/` with the
-    bumped version number.
+7. Build both ZIPs with `./scripts/build-release.sh` (do NOT pass
+   `clean` — old ZIPs are preserved).
+8. Verify each ZIP lands in its own `build/distributions/` with the
+   bumped version number.
 
-## What's New / Marketplace change notes (MANDATORY on every version bump)
+**Note on versioning:** since 0.3.50 the project uses **fully automatic
+versioning via conventional commits** — you do NOT bump
+`pluginBaseVersion` by hand and you do NOT add `changeNotes` /
+`CHANGELOG.md` entries by hand. Read the next section.
+
+## Versioning + releases — conventional commits flow
+
+### How releases happen now
+
+Since 0.3.50, the project ships through `.github/workflows/auto-release.yml`,
+which is the SOLE production release path. The flow:
+
+1. You push a commit to `main` with a conventional-commits subject —
+   `fix:` / `feat:` / `feat!:` / `perf:` / etc.
+2. `auto-release.yml` runs on every push to `main` (except commits from
+   `github-actions[bot]` and commits containing `[skip auto-release]`).
+3. It scans every commit subject since the last `v*` tag, decides bump
+   type, and if a bump is warranted it:
+   - Bumps `pluginBaseVersion` in BOTH `build.gradle.kts` files via `sed`.
+   - Calls `scripts/update-release-notes.py` to insert a
+     `<h3>X.Y.Z</h3>` block in BOTH `changeNotes` strings AND a
+     `## [X.Y.Z] — DATE` section in `CHANGELOG.md` (with Added / Fixed /
+     Performance subsections derived from commit prefixes).
+   - Commits the result back to `main` from `github-actions[bot]` with
+     the message `chore(release): X.Y.Z [skip auto-release]`.
+   - Builds both ZIPs (2025.3.x and 2026.1.x), publishes both to
+     JetBrains Marketplace (the 2026.1.x ZIP gets the standard `-261`
+     Marketplace version suffix — see **Marketplace version suffix
+     `-261`** below), and creates a GitHub Release tagged
+     `v<pluginBaseVersion>` with both ZIPs attached.
+
+You never edit `pluginBaseVersion`, `changeNotes`, or `CHANGELOG.md` by
+hand. Just write a good conventional commit subject and push.
+
+### Conventional commit subject contract
+
+| Subject prefix                       | Bump   | Goes into release notes? |
+|--------------------------------------|--------|--------------------------|
+| `fix:` or `fix(scope):`              | patch  | yes — Fixed              |
+| `perf:` or `perf(scope):`            | patch  | yes — Performance        |
+| `feat:` or `feat(scope):`            | minor  | yes — Added              |
+| `feat!:` or `BREAKING CHANGE:` body  | major  | yes — Added              |
+| `chore:` / `docs:` / `ci:` / `refactor:` / `test:` / `style:` | none | no — no release |
+
+The subject must start at column 0 with the prefix, a single colon, one
+space, then the user-facing description. The script capitalizes the
+first letter automatically before rendering. Optional scope (in
+parentheses) is preserved as `<code>scope</code>:` in HTML / `**scope**:`
+in Markdown.
+
+### Anti-patterns (DO NOT do these)
+
+- **Do NOT manually edit `pluginBaseVersion`** in either build.gradle.kts.
+  If you do, `auto-release.yml` may compute the next version off the
+  wrong base. (If you absolutely have to — for example to skip ahead
+  past a botched release — use the manual-release fallback workflow,
+  see below.)
+- **Do NOT manually add `<h3>X.Y.Z</h3>` blocks to `changeNotes`** for
+  the current or future version. The script does this. Manual entries
+  for past releases stay where they are.
+- **Do NOT manually add `## [X.Y.Z]` sections to `CHANGELOG.md`** for
+  the current or future version. Same reason.
+- **Do NOT commit secrets to `secrets.properties`** — it's gitignored
+  for good reason. Marketplace and signing tokens live in GitHub
+  Secrets (`RELEASE_PAT`, `JETBRAINS_MARKETPLACE_TOKEN`,
+  `JETBRAINS_CERTIFICATE_CHAIN`, `JETBRAINS_PRIVATE_KEY`,
+  `JETBRAINS_PRIVATE_KEY_PASSWORD`).
+
+### Bot loop safety
+
+`auto-release.yml` has three independent guards against pushing the
+bump commit back and triggering itself in an infinite loop:
+1. `github.actor != 'github-actions[bot]'`
+2. `!startsWith(github.event.head_commit.message, 'chore(release):')`
+3. `!contains(github.event.head_commit.message, '[skip auto-release]')`
+
+If you ever need to change the bot identity or the marker, update ALL
+THREE guards together so any one of them catches the loop.
+
+### Manual-release fallback
+
+`.github/workflows/manual-release.yml` is the old "read version, build,
+publish" workflow trimmed to `workflow_dispatch` only. Use it from the
+Actions tab when:
+- Re-releasing the same version after a botched publish (set
+  `force=true`).
+- Building a GitHub-only release during a Marketplace outage (set
+  `skip_marketplace=true`).
+- Recovering from a state where `auto-release.yml` failed mid-flight
+  and the bump commit is on `main` but no Release was created — in
+  that case `pluginBaseVersion` is already correct, manual-release
+  picks it up and finishes the job.
+
+## What's New / Marketplace change notes
 
 The `changeNotes = """ ... """.trimIndent()` block inside
 `intellijPlatform.pluginConfiguration` in **both** `build.gradle.kts`
 files is what JetBrains Marketplace shows in the plugin's
 **What's New** tab and what PyCharm shows in **Settings → Plugins →
-Updates → "What's New in this version"**. If you bump the version
-without updating it, users installing the new build still see notes for
-the *previous* version, which looks unprofessional and breaks the
-release pipeline's auto-extracted changelog body.
+Updates → "What's New in this version"**.
 
-### Rule
+### Since 0.3.50 — fully automated
 
-Whenever you bump `version` in `build.gradle.kts`, you MUST also prepend
-a new `<h3>0.3.N</h3>` block to `changeNotes` in **both** lines, with
-the same HTML content.
+`scripts/update-release-notes.py` (called from
+`.github/workflows/auto-release.yml`) inserts a new `<h3>X.Y.Z</h3>`
+block at the TOP of `changeNotes` in BOTH files, plus the matching
+`## [X.Y.Z]` section in `CHANGELOG.md`, derived from the conventional
+commit subjects since the last `v*` tag. You do nothing.
 
-Skipping the step is only acceptable if you are reverting an unreleased
-local bump.
+What ends up in the user-facing notes is exactly what you write in the
+`fix:` / `feat:` / `perf:` commit subjects — so write them well.
+
+### Subject-to-output examples
+
+| Commit subject                                           | Renders in changeNotes as                                    |
+|----------------------------------------------------------|--------------------------------------------------------------|
+| `fix: clear deprecated FileEditor.disposeEditor warning` | `<li>Clear deprecated FileEditor.disposeEditor warning</li>` |
+| `fix(verifier): mute experimental Jupyter API`           | `<li><code>verifier</code>: Mute experimental Jupyter API</li>` |
+| `feat: add remote pip freeze tab`                        | `<li>Add remote pip freeze tab</li>` (under `<h3>` minor-bump) |
+| `chore: tidy README screenshots`                         | nothing — `chore:` does not appear in release notes          |
 
 ### Format (HTML, not Markdown — Marketplace does not render Markdown)
 
-```kotlin
-changeNotes = """
-    <h3>0.3.N</h3>
-    <ul>
-      <li><b>Short headline of the change.</b> One sentence of context — what
-      the user will notice, plus the file/class that holds the fix if it
-      helps debugging.</li>
-      <li>Second item, same shape.</li>
-    </ul>
-    <h3>0.3.N-1</h3>
-    ...
-""".trimIndent()
-```
+Allowed tags Marketplace's sanitizer accepts: `<h3>`, `<h4>`, `<p>`,
+`<ul>`, `<ol>`, `<li>`, `<b>`/`<strong>`, `<i>`/`<em>`, `<code>`,
+`<pre>`, `<a href="...">`, `<br>`. Everything else is stripped. The
+auto-release script only emits `<h3>`, `<ul>`, `<li>`, `<code>` —
+nothing exotic.
 
-Allowed tags: `<h3>`, `<h4>`, `<p>`, `<ul>`, `<ol>`, `<li>`,
-`<b>`/`<strong>`, `<i>`/`<em>`, `<code>`, `<pre>`, `<a href="...">`,
-`<br>`. Everything else is stripped by Marketplace's sanitizer.
+### When you DO have to edit changeNotes manually
 
-### Mirror with CHANGELOG.md
-
-Each `<h3>0.3.N</h3>` HTML block in `changeNotes` should have a matching
-`## [0.3.N]` Markdown section in the root `CHANGELOG.md` covering the
-same bullets. Treat CHANGELOG.md as the long-form source of truth
-(grouped by Added / Changed / Fixed / Security / etc.) and `changeNotes`
-as its concise user-facing HTML projection — typically the most
-release-note-worthy 1-3 bullets.
-
-For internal-only refactors (CI tweaks, README polish, dependency
-bumps), still add a one-liner: users see *something* about the new
-version, even if it's `<li>Internal release: documentation and CI
-improvements only.</li>`.
-
-### Checklist before commit
-
-- [ ] `<h3>0.3.N</h3>` block exists at the **top** of `changeNotes` in
-      `build.gradle.kts` (root)
-- [ ] Same block exists at the top of `changeNotes` in
-      `pycharm-plugin-2026.1/build.gradle.kts`
-- [ ] The two HTML blocks are byte-identical (use
-      `diff <(sed -n '/changeNotes/,/""".trimIndent/p' build.gradle.kts) <(sed -n '/changeNotes/,/""".trimIndent/p' pycharm-plugin-2026.1/build.gradle.kts)`)
-- [ ] Same version section exists in root `CHANGELOG.md` with at least
-      one matching bullet
+Only when fixing a historic block (typo, wrong description). Format
+must stay byte-identical between the two `build.gradle.kts` files for
+the same `<h3>X.Y.Z</h3>` entry (run
+`diff <(sed -n '/changeNotes/,/""".trimIndent/p' build.gradle.kts) <(sed -n '/changeNotes/,/""".trimIndent/p' pycharm-plugin-2026.1/build.gradle.kts)`
+to verify). The auto-release script will not touch historic blocks.
 
 ## Quick parity check
 
@@ -183,10 +247,15 @@ instead.
 
 Both lines use the same `0.3.X` patch numbers in lockstep. The single
 source of truth is the `val pluginBaseVersion = "0.3.N"` declaration at
-the top of each `build.gradle.kts`. When you bump 2025.3.x to `0.3.N`,
-you MUST also bump 2026.1.x to `0.3.N` even if its change is only
-documentation. The release workflow reads `pluginBaseVersion` from BOTH
-files and aborts on mismatch.
+the top of each `build.gradle.kts`. Since 0.3.50, **the bot keeps the
+two lines in lockstep automatically** — `auto-release.yml` always edits
+both files together via `sed`, so you cannot accidentally bump only
+one. The release workflow reads `pluginBaseVersion` from BOTH files
+and aborts on mismatch.
+
+You should never edit `pluginBaseVersion` by hand. The only exception
+is recovering from a botched release through `manual-release.yml` —
+see the dedicated section above.
 
 ### Marketplace version suffix `-261` (2026.1.x only)
 
