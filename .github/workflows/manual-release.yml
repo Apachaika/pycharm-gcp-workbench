@@ -47,7 +47,7 @@ jobs:
       should_release: ${{ steps.decide.outputs.should_release }}
     steps:
       - name: Checkout (with tags)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -125,7 +125,7 @@ jobs:
             suffix: "pycharm-2026.1.x-build-261"
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Java 17 (Temurin)
         uses: actions/setup-java@v4
@@ -193,7 +193,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Download built ZIPs
         uses: actions/download-artifact@v4
