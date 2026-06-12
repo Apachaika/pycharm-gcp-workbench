@@ -236,7 +236,7 @@ jobs:
           cat release_body.md
 
       - name: Create GitHub Release + tag
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           name: ${{ needs.detect.outputs.tag }}
           tag_name: ${{ needs.detect.outputs.tag }}
