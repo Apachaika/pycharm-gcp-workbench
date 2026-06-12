@@ -3,7 +3,7 @@ description: Vertex Workbench PyCharm plugin — use project docs and skills bef
 alwaysApply: true
 ---
 
-# Vertex Workbench plugin (2026.1.x line)
+# Vertex Workbench plugin
 
 - Architecture and flows: `docs/ARCHITECTURE.md`
 - Features, versions, fixes: `docs/FEATURES.md`
@@ -11,13 +11,15 @@ alwaysApply: true
 
 When changing behavior: keep two network paths separate (localhost proxy vs direct Contents HTTPS). Do not persist GCP tokens. Match existing Kotlin/IntelliJ `@Service` patterns in `dev.vertexworkbench.pycharm`.
 
-Build: `./scripts/build-release.sh` (runs `./gradlew test buildPlugin`) / `./gradlew runIde` (Gradle 9, Java 17). This source tree targets PyCharm Professional 2026.1.2 (`sinceBuild=261`).
+Build: `./scripts/build-release.sh` (runs `./gradlew test buildPlugin`) / `./gradlew runIde` (Gradle 9, Java 17).
 
 ## Two build lines (always port behavior changes to both)
 
 | Line | Root | Target IDE |
 |------|------|------------|
-| 2025.3.x | `/Users/oleksii/Work/pycharm-plugin` | PyCharm Professional 2025.3.5/2025.3.6 (`sinceBuild=253`) |
-| 2026.1.x | `/Users/oleksii/Work/pycharm-plugin/pycharm-plugin-2026.1` (this folder) | PyCharm Professional 2026.1.2 (`sinceBuild=261`) |
+| 2025.3.x | `/Users/oleksii/Work/pycharm-plugin` (this folder) | PyCharm Professional 2025.3.5/2025.3.6 (`sinceBuild=253`) |
+| 2026.1.x | `/Users/oleksii/Work/pycharm-plugin/pycharm-plugin-2026.1` | PyCharm Professional 2026.1.2 (`sinceBuild=261`) |
 
-When fixing a bug or adding behavior that is not Jupyter-runtime-specific, apply the same patch to both lines, run `./gradlew test` and `./scripts/build-release.sh` in each, and bump the same version number in both. See `.cursor/skills/dual-version-maintenance/SKILL.md`.
+Each line has its own `build.gradle.kts`, `docs/`, `src/`, `.cursor/`. When fixing a bug or adding behavior that is not Jupyter-runtime-specific, apply the same patch to both lines, run `./gradlew test` and `./scripts/build-release.sh` in each, and bump the same version number in both. See `.cursor/skills/dual-version-maintenance/SKILL.md`.
+
+**Every version bump must also update `changeNotes` (What's New) in both `build.gradle.kts` files AND add a matching `## [0.3.N]` section to `CHANGELOG.md`.** Marketplace renders `changeNotes` as the "What's New" tab on the plugin page; skipping it ships a release with stale notes. Use HTML (`<h3>`, `<ul>`, `<li>`, `<b>`, `<code>`) — Markdown is not rendered. See the dedicated section in the dual-version-maintenance skill.

@@ -21,3 +21,5 @@ Build: `./scripts/build-release.sh` (runs `./gradlew test buildPlugin`) / `./gra
 | 2026.1.x | `/Users/oleksii/Work/pycharm-plugin/pycharm-plugin-2026.1` | PyCharm Professional 2026.1.2 (`sinceBuild=261`) |
 
 Each line has its own `build.gradle.kts`, `docs/`, `src/`, `.cursor/`. When fixing a bug or adding behavior that is not Jupyter-runtime-specific, apply the same patch to both lines, run `./gradlew test` and `./scripts/build-release.sh` in each, and bump the same version number in both. See `.cursor/skills/dual-version-maintenance/SKILL.md`.
+
+**Every version bump must also update `changeNotes` (What's New) in both `build.gradle.kts` files AND add a matching `## [0.3.N]` section to `CHANGELOG.md`.** Marketplace renders `changeNotes` as the "What's New" tab on the plugin page; skipping it ships a release with stale notes. Use HTML (`<h3>`, `<ul>`, `<li>`, `<b>`, `<code>`) — Markdown is not rendered. See the dedicated section in the dual-version-maintenance skill.

@@ -10,7 +10,21 @@ plugins {
 }
 
 group = "dev.vertexworkbench"
-version = "0.3.48"
+
+// pluginBaseVersion is the logical release version shared with the 2025.3.x
+// build line (root build.gradle.kts). Both lines bump it in lockstep; the
+// release.yml workflow reads this exact declaration from both files and
+// refuses to release on a mismatch.
+//
+// Marketplace constraint: JetBrains Marketplace disallows two ZIPs sharing
+// the same `version` string under one plugin id, even when their compatibility
+// ranges (`sinceBuild`/`untilBuild`) are disjoint. So the 2026.1.x line
+// publishes as `<pluginBaseVersion>-261` while the 2025.3.x line publishes
+// as `<pluginBaseVersion>` verbatim. Both ZIPs then coexist under plugin id
+// `dev.vertexworkbench.connector` in the stable channel; Marketplace serves
+// the correct ZIP per user's IDE build based on each ZIP's sinceBuild range.
+val pluginBaseVersion = "0.3.49"
+version = "$pluginBaseVersion-261"
 
 val targetPyCharmVersion = providers.gradleProperty("targetPyCharmVersion").getOrElse("2026.1.2")
 val artifactSuffix = providers.gradleProperty("artifactSuffix").orNull
@@ -105,6 +119,22 @@ intellijPlatform {
         """.trimIndent()
 
         changeNotes = """
+            <h3>0.3.49</h3>
+            <ul>
+              <li><b>Fixed missing 2026.1.x build on JetBrains Marketplace.</b> Marketplace rejects two ZIPs sharing the same <code>version</code> string under one plugin id, so the 2026.1.x build line now publishes as <code>0.3.49-261</code> while the 2025.3.x line stays as <code>0.3.49</code>. Both ZIPs coexist under <code>dev.vertexworkbench.connector</code> in the stable channel and Marketplace serves the right one per user's IDE build via <code>sinceBuild</code>/<code>untilBuild</code>.</li>
+              <li>CI: release workflow surfaces Marketplace publish failures as workflow annotations instead of silently swallowing them via <code>continue-on-error</code>.</li>
+            </ul>
+            <h3>0.3.48</h3>
+            <ul>
+              <li><b>Plugin icon refresh.</b> The Marketplace logo, <em>Settings → Plugins</em> entry, and <em>Vertex Workbench</em> Tool Window icon now render as a crisp 40×40 IntelliJ-blue (<code>#3574F0</code> light / <code>#7DA7FF</code> dark) glyph with explicit width/height, instead of the previous low-contrast 20×20 grey speck.</li>
+              <li>README badges (release, downloads, CI) now go through cached shields.io endpoints so the page no longer breaks when GitHub-API quota is exhausted.</li>
+              <li>CI: release workflow auto-publishes both ZIPs to JetBrains Marketplace when the <code>JETBRAINS_MARKETPLACE_TOKEN</code> repository secret is set.</li>
+            </ul>
+            <h3>0.3.47</h3>
+            <ul>
+              <li><b>Renamed plugin id</b> from <code>dev.vertexworkbench.pycharm</code> to <code>dev.vertexworkbench.connector</code> to satisfy JetBrains Marketplace rule that plugin ids must not contain trademarked product names. Java/Kotlin package names (<code>dev.vertexworkbench.pycharm.*</code>) remain unchanged.</li>
+              <li>Tightened <code>untilBuild</code> for the 2025.3.x line from the invalid <code>260.*</code> (PyCharm 2026.0 was never released) to <code>253.*</code>, clearing the Marketplace upload warning. The 2026.1.x line was already <code>261.*</code>.</li>
+            </ul>
             <h3>0.3.46</h3>
             <ul>
               <li>Fix: <em>Select Jupyter Kernel</em> chooser no longer appears when PyCharm auto-restores a previously open Workbench <code>.ipynb</code> tab on startup (before you clicked Connect). <code>WorkbenchNotebookSessionFactory.checkIsSupported</code> now also claims any <code>.ipynb</code> that lives under the local Workbench cache directory, and <code>buildSession</code> picks up the active Workbench connection or shows a clear "Reconnect to Vertex Workbench" error instead of the platform falling back to a local Python kernel.</li>

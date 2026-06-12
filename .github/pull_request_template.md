@@ -20,7 +20,8 @@ Behavior changes typically have to land in BOTH of them — see
 - [ ] `./gradlew test` passes locally for each touched build line
 - [ ] `./scripts/build-release.sh` (or `./gradlew buildPlugin`) succeeds for each touched build line
 - [ ] Version in `build.gradle.kts` is bumped in **both** lines (if this PR ships a release)
-- [ ] [`CHANGELOG.md`](../CHANGELOG.md) updated with the new version section
+- [ ] **`changeNotes` (What's New) updated in both `build.gradle.kts` files** with a new `<h3>0.3.N</h3>` block — Marketplace shows this on the plugin's What's New tab (HTML, not Markdown)
+- [ ] [`CHANGELOG.md`](../CHANGELOG.md) updated with the matching `## [0.3.N]` section
 - [ ] Did NOT add any value to `secrets.properties` or other gitignored secrets file
 - [ ] If the change affects user-visible behavior, [`docs/FEATURES.md`](../docs/FEATURES.md) is updated
 

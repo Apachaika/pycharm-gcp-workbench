@@ -52,27 +52,38 @@ jobs:
 
       - name: Read plugin version from both build.gradle.kts
         id: read
+        # Both files declare `val pluginBaseVersion = "<semver>"` as the single
+        # source of truth for the logical release version. The 2025.3.x line
+        # publishes verbatim as <pluginBaseVersion>; the 2026.1.x line adds a
+        # "-261" build-line suffix to its Marketplace `version` so that the
+        # two ZIPs can coexist under one plugin id (Marketplace rejects two
+        # uploads sharing the same `version` string). The GitHub Release tag
+        # is always v<pluginBaseVersion> without the suffix.
         run: |
           set -euo pipefail
-          ROOT_VERSION=$(grep -E '^version = "' build.gradle.kts | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
-          SUB_VERSION=$(grep -E '^version = "' pycharm-plugin-2026.1/build.gradle.kts | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
+          ROOT_VERSION=$(grep -E '^val pluginBaseVersion = "' build.gradle.kts | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
+          SUB_VERSION=$(grep -E '^val pluginBaseVersion = "' pycharm-plugin-2026.1/build.gradle.kts | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
 
           if [[ -z "$ROOT_VERSION" ]]; then
-            echo "::error file=build.gradle.kts::Could not read 'version = \"...\"' from build.gradle.kts"
+            echo "::error file=build.gradle.kts::Could not read 'val pluginBaseVersion = \"...\"' from build.gradle.kts"
+            exit 1
+          fi
+          if [[ -z "$SUB_VERSION" ]]; then
+            echo "::error file=pycharm-plugin-2026.1/build.gradle.kts::Could not read 'val pluginBaseVersion = \"...\"' from pycharm-plugin-2026.1/build.gradle.kts"
             exit 1
           fi
           if [[ "$ROOT_VERSION" != "$SUB_VERSION" ]]; then
-            echo "::error::Version mismatch between build lines: root=$ROOT_VERSION, 2026.1=$SUB_VERSION. Bump both files to the same value."
+            echo "::error::pluginBaseVersion mismatch between build lines: root=$ROOT_VERSION, 2026.1=$SUB_VERSION. Bump both files to the same value."
             exit 1
           fi
           if ! [[ "$ROOT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-].*)?$ ]]; then
-            echo "::error::Version '$ROOT_VERSION' is not a valid semver string"
+            echo "::error::pluginBaseVersion '$ROOT_VERSION' is not a valid semver string"
             exit 1
           fi
 
           echo "version=$ROOT_VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=v$ROOT_VERSION"     >> "$GITHUB_OUTPUT"
-          echo "Detected plugin version: $ROOT_VERSION (tag would be v$ROOT_VERSION)"
+          echo "Detected plugin base version: $ROOT_VERSION (tag would be v$ROOT_VERSION; 2026.1.x ZIP publishes as ${ROOT_VERSION}-261)"
 
       - name: Decide whether to release this version
         id: decide
@@ -142,7 +153,11 @@ jobs:
 
       - name: Publish to JetBrains Marketplace
         if: github.event.inputs.skip_marketplace != 'true'
-        continue-on-error: true   # don't block the GitHub Release if Marketplace rejects/throttles
+        # continue-on-error stays ON so a Marketplace rejection does not
+        # block the GitHub Release. We surface the failure as a workflow
+        # annotation below so it is still visible on the Actions run page.
+        continue-on-error: true
+        id: marketplace
         working-directory: ${{ matrix.line.dir }}
         env:
           JETBRAINS_MARKETPLACE_TOKEN: ${{ secrets.JETBRAINS_MARKETPLACE_TOKEN }}
@@ -158,6 +173,17 @@ jobs:
             -PtargetPyCharmVersion=${{ matrix.line.pycharm }} \
             -PartifactSuffix=${{ matrix.line.suffix }} \
             --no-daemon --stacktrace
+
+      - name: Annotate Marketplace publish result (${{ matrix.line.name }})
+        if: always() && github.event.inputs.skip_marketplace != 'true'
+        run: |
+          if [[ "${{ steps.marketplace.outcome }}" == "failure" ]]; then
+            echo "::error title=Marketplace publish FAILED (${{ matrix.line.name }})::./gradlew publishPlugin for ${{ matrix.line.suffix }} exited non-zero. See the 'Publish to JetBrains Marketplace' step above for the exact error. The GitHub Release is still created. Either rerun the workflow once the issue is fixed, or upload dist/vertex-workbench-pycharm-${{ matrix.line.suffix }}.zip manually at https://plugins.jetbrains.com/plugin/edit"
+            exit 0
+          fi
+          if [[ "${{ steps.marketplace.outcome }}" == "success" ]]; then
+            echo "::notice title=Marketplace publish OK (${{ matrix.line.name }})::publishPlugin succeeded for ${{ matrix.line.suffix }}."
+          fi
 
   release:
     name: Tag + Publish GitHub Release

@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.49] — 2026-06-12
+
+### Fixed
+- **2026.1.x build is now actually published to JetBrains Marketplace.** Prior to this release the GitHub Release Assets included both ZIPs but only the 2025.3.x one made it to Marketplace, because Marketplace rejects two ZIPs that share the same `version` string under one plugin id (regardless of their `sinceBuild`/`untilBuild` ranges, regardless of channel — the error message is `…plugin already contains version <X> in channel <Y>`).
+- **Fix:** the 2026.1.x build line now publishes as `<pluginBaseVersion>-261` while the 2025.3.x line publishes verbatim as `<pluginBaseVersion>`. Both ZIPs coexist under plugin id `dev.vertexworkbench.connector` in the default stable channel and Marketplace picks the right one per user's IDE build via the `sinceBuild`/`untilBuild` range each ZIP advertises. Both `build.gradle.kts` files now declare a shared `val pluginBaseVersion = "<semver>"`; `release.yml` reads that declaration as the source of truth and the GitHub Release tag stays `v<pluginBaseVersion>` (without the `-261` suffix).
+
+### CI/CD
+- `release.yml` now annotates a Marketplace publish failure for either build line as a workflow `::error` line on the Actions run page, instead of letting `continue-on-error: true` swallow it silently. The GitHub Release is still created (so a Marketplace outage no longer blocks the GitHub-side artifact distribution), but you immediately see *which* line failed and a pointer to re-upload manually.
+
 ## [0.3.48] — 2026-06-12
 
 ### Changed
@@ -153,7 +162,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 See [docs/FEATURES.md](docs/FEATURES.md) for the full per-feature breakdown.
 
-[Unreleased]: https://github.com/Apachaika/pycharm-gcp-workbench/compare/v0.3.48...HEAD
+[Unreleased]: https://github.com/Apachaika/pycharm-gcp-workbench/compare/v0.3.49...HEAD
+[0.3.49]: https://github.com/Apachaika/pycharm-gcp-workbench/releases/tag/v0.3.49
 [0.3.48]: https://github.com/Apachaika/pycharm-gcp-workbench/releases/tag/v0.3.48
 [0.3.47]: https://github.com/Apachaika/pycharm-gcp-workbench/releases/tag/v0.3.47
 [0.3.46]: https://github.com/Apachaika/pycharm-gcp-workbench/releases/tag/v0.3.46
