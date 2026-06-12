@@ -3,10 +3,14 @@
     <name>Workbench Connector for GCP</name>
     <vendor email="xapachai@gmail.com">Oleksii Filimonchuk</vendor>
 
+    <!-- Compatibility with PyCharm is signalled by the product-neutral module
+         com.intellij.modules.python (JetBrains docs). We intentionally do NOT depend on the
+         plugin ids Pythonid/PythonCore: those are indexed by Marketplace as bundled in
+         IntelliJ IDEA Ultimate, which biases the auto-detected "Compatible Products" toward
+         IntelliJ IDEA only. The code uses no com.jetbrains.python API, so the module alone
+         (plus the Jupyter plugin, which transitively requires Python) is sufficient. -->
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.modules.python</depends>
-    <depends>PythonCore</depends>
-    <depends>Pythonid</depends>
     <depends>intellij.jupyter</depends>
     <depends>org.jetbrains.plugins.terminal</depends>
 
