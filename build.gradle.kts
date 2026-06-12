@@ -20,7 +20,7 @@ group = "dev.vertexworkbench"
 // single plugin id `dev.vertexworkbench.connector` — Marketplace disallows
 // two ZIPs with the same `version` in one channel, so the suffix is what
 // keeps them disambiguated.
-val pluginBaseVersion = "0.3.49"
+val pluginBaseVersion = "0.3.50"
 version = pluginBaseVersion
 
 val targetPyCharmVersion = providers.gradleProperty("targetPyCharmVersion").getOrElse("2025.3.5")
@@ -116,6 +116,10 @@ intellijPlatform {
         """.trimIndent()
 
         changeNotes = """
+            <h3>0.3.50</h3>
+            <ul>
+              <li>Clear deprecated Plugin Verifier warnings (FileEditor, AppTopics, runReadAction)</li>
+            </ul>
             <h3>0.3.49</h3>
             <ul>
               <li><b>Fixed missing 2026.1.x build on JetBrains Marketplace.</b> Marketplace rejects two ZIPs sharing the same <code>version</code> string under one plugin id, so the 2026.1.x build line now publishes as <code>0.3.49-261</code> while the 2025.3.x line stays as <code>0.3.49</code>. Both ZIPs coexist under <code>dev.vertexworkbench.connector</code> in the stable channel and Marketplace serves the right one per user's IDE build via <code>sinceBuild</code>/<code>untilBuild</code>.</li>

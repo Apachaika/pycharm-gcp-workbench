@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.50] — 2026-06-12
+
+### Fixed
+- Clear deprecated Plugin Verifier warnings (FileEditor, AppTopics, runReadAction)
+
+
 ## [0.3.49] — 2026-06-12
 
 ### Fixed
@@ -165,7 +171,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 See [docs/FEATURES.md](docs/FEATURES.md) for the full per-feature breakdown.
 
-[Unreleased]: https://github.com/Apachaika/pycharm-gcp-workbench/compare/v0.3.49...HEAD
+[Unreleased]: https://github.com/Apachaika/pycharm-gcp-workbench/compare/v0.3.50...HEAD
+[0.3.50]: https://github.com/Apachaika/pycharm-gcp-workbench/releases/tag/v0.3.50
 [0.3.49]: https://github.com/Apachaika/pycharm-gcp-workbench/releases/tag/v0.3.49
 [0.3.48]: https://github.com/Apachaika/pycharm-gcp-workbench/releases/tag/v0.3.48
 [0.3.47]: https://github.com/Apachaika/pycharm-gcp-workbench/releases/tag/v0.3.47
