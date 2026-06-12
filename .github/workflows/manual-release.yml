@@ -145,7 +145,7 @@ jobs:
             --no-daemon --stacktrace
 
       - name: Upload built ZIP
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: zip-${{ matrix.line.suffix }}
           path: ${{ matrix.line.dir }}/build/distributions/*.zip
