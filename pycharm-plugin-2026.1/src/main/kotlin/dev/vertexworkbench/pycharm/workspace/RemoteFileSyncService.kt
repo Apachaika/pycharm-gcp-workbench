@@ -1,12 +1,11 @@
 package dev.vertexworkbench.pycharm.workspace
 
-import com.intellij.AppTopics
 import com.intellij.diff.DiffContentFactory
 import com.intellij.diff.DiffManager
 import com.intellij.diff.requests.SimpleDiffRequest
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.application.runReadAction
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.logger
@@ -52,7 +51,7 @@ class RemoteFileSyncService(
 
     init {
         project.messageBus.connect(this).subscribe(
-            AppTopics.FILE_DOCUMENT_SYNC,
+            FileDocumentManagerListener.TOPIC,
             object : FileDocumentManagerListener {
                 override fun beforeDocumentSaving(document: com.intellij.openapi.editor.Document) {
                     val file = FileDocumentManager.getInstance().getFile(document) ?: return
@@ -388,12 +387,12 @@ class RemoteFileSyncService(
     }
 
     private fun findLocalVirtualFile(path: String, nioPath: Path): VirtualFile? =
-        runReadAction {
+        ReadAction.compute<VirtualFile?, RuntimeException> {
             LocalFileSystem.getInstance().findFileByPath(path)
         } ?: LocalFileSystem.getInstance().refreshAndFindFileByNioFile(nioPath)
 
     private fun readDocumentState(file: VirtualFile?): DocumentState =
-        runReadAction {
+        ReadAction.compute<DocumentState, RuntimeException> {
             val document = file?.let { FileDocumentManager.getInstance().getDocument(it) }
             DocumentState(
                 document = document,

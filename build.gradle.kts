@@ -119,6 +119,7 @@ intellijPlatform {
             <h3>0.3.49</h3>
             <ul>
               <li><b>Fixed missing 2026.1.x build on JetBrains Marketplace.</b> Marketplace rejects two ZIPs sharing the same <code>version</code> string under one plugin id, so the 2026.1.x build line now publishes as <code>0.3.49-261</code> while the 2025.3.x line stays as <code>0.3.49</code>. Both ZIPs coexist under <code>dev.vertexworkbench.connector</code> in the stable channel and Marketplace serves the right one per user's IDE build via <code>sinceBuild</code>/<code>untilBuild</code>.</li>
+              <li>Dev: <code>./gradlew verifyPlugin</code> now mirrors the JetBrains Marketplace verifier — it auto-discovers every PyCharm Professional release in the line's compatibility range (2025.3.x for the 253 line, 2026.1.x for the 261 line) and runs the same checks Marketplace runs on upload, plus a forward-compat sanity check against the next major and the latest EAP.</li>
               <li>CI: release workflow surfaces Marketplace publish failures as workflow annotations instead of silently swallowing them via <code>continue-on-error</code>.</li>
             </ul>
             <h3>0.3.48</h3>
@@ -203,6 +204,25 @@ intellijPlatform {
         freeArgs = listOf("-mute", "TemplateWordInPluginId")
 
         ides {
+            // Primary target: every PyCharm Professional release inside this
+            // build line's declared compatibility range (`sinceBuild`/`untilBuild`
+            // = 253 / 253.*). JetBrains Plugin Verifier auto-discovers every
+            // 2025.3.x release (2025.3, 2025.3.1, …, 2025.3.6) from the IDE
+            // repository and runs against each — this is the SAME verifier
+            // JetBrains Marketplace runs on upload, so a green local
+            // `./gradlew verifyPlugin` here is a strong predictor of a green
+            // Marketplace verification entry, which is what gates "PyCharm
+            // Professional" appearing in the plugin page's Compatible Products.
+            select {
+                types = listOf(IntelliJPlatformType.PyCharmProfessional)
+                sinceBuild = "253"
+                untilBuild = "253.*"
+            }
+            // Forward-compat sanity: PyCharm 2026.1 (next major) and the
+            // 2026.2 EAP (262.*). These are OUTSIDE this line's declared
+            // `untilBuild`, so any failures here do NOT mean Marketplace will
+            // reject the plugin — they only warn us that bumping `untilBuild`
+            // to cover the next major would currently break.
             create(IntelliJPlatformType.PyCharmProfessional, "2026.1.2")
             select {
                 types = listOf(IntelliJPlatformType.PyCharmProfessional)
@@ -221,6 +241,11 @@ tasks {
 
     withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
         compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        // Emit real JVM default methods instead of compatibility bridges, so the class
+        // does not synthesize delegating overrides for inherited interface defaults
+        // (e.g. ToolWindowFactory.getIcon/getAnchor/manage/isApplicable). Those bridges
+        // are what the JetBrains Plugin Verifier reports as deprecated/experimental usages.
+        compilerOptions.jvmDefault.set(org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode.NO_COMPATIBILITY)
     }
 
     test {
