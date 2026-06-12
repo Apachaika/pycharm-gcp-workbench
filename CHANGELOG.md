@@ -1,12 +1,24 @@
 # Changelog
 
-All notable changes to **Workbench Connector for GCP** (plugin id `dev.vertexworkbench.pycharm`) are documented here.
+All notable changes to **Workbench Connector for GCP** (plugin id `dev.vertexworkbench.connector` — renamed from `dev.vertexworkbench.pycharm` in 0.3.47) are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Both build lines (PyCharm 2025.3.x and 2026.1.x) share the same version number and ship together as one release.
 
 ## [Unreleased]
 
-## [0.3.47] — 2026-06-11
+## [0.3.48] — 2026-06-12
+
+### Changed
+- **Plugin icon refresh.** Replaced the default 20×20 low-contrast grey `META-INF/pluginIcon.svg` + `pluginIcon_dark.svg` with a proper 40×40 SVG that has explicit `width`/`height` and IntelliJ-blue accent (`#3574F0` for light theme, `#7DA7FF` for dark). The Marketplace plugin logo, **Settings → Plugins** entry, and the **Vertex Workbench** Tool Window icon now look crisp instead of a faded grey speck.
+
+### Documentation
+- README release/download badges now pass `cacheSeconds=21600` so a transient shields.io GitHub-API rate limit (the "Unable to select next GitHub token from pool" placeholder) no longer breaks the page.
+- Added a GitHub downloads badge and commented-out JetBrains Marketplace version/downloads badges; uncomment them once the plugin is approved on Marketplace.
+
+### CI/CD
+- Release workflow now auto-publishes both ZIPs to JetBrains Marketplace via `./gradlew publishPlugin` after a successful build (parallel per build line). Requires the `JETBRAINS_MARKETPLACE_TOKEN` repository secret; if it's missing the step is skipped with a notice instead of failing. Optional secrets `JETBRAINS_CERTIFICATE_CHAIN`, `JETBRAINS_PRIVATE_KEY`, `JETBRAINS_PRIVATE_KEY_PASSWORD` enable plugin signing. A `skip_marketplace` workflow_dispatch input lets you ship a GitHub-only release when needed.
+
+## [0.3.47] — 2026-06-12
 
 ### Changed
 - **Plugin id renamed** from `dev.vertexworkbench.pycharm` to `dev.vertexworkbench.connector`. JetBrains Marketplace rejects plugin ids that contain trademarked product names such as `pycharm`. Java/Kotlin package names (`dev.vertexworkbench.pycharm.*`) remain unchanged — only the id in `plugin.xml` and `build.gradle.kts` was updated.
@@ -141,7 +153,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 See [docs/FEATURES.md](docs/FEATURES.md) for the full per-feature breakdown.
 
-[Unreleased]: https://github.com/Apachaika/pycharm-gcp-workbench/compare/v0.3.47...HEAD
+[Unreleased]: https://github.com/Apachaika/pycharm-gcp-workbench/compare/v0.3.48...HEAD
+[0.3.48]: https://github.com/Apachaika/pycharm-gcp-workbench/releases/tag/v0.3.48
 [0.3.47]: https://github.com/Apachaika/pycharm-gcp-workbench/releases/tag/v0.3.47
 [0.3.46]: https://github.com/Apachaika/pycharm-gcp-workbench/releases/tag/v0.3.46
 [0.3.45]: https://github.com/Apachaika/pycharm-gcp-workbench/releases/tag/v0.3.45

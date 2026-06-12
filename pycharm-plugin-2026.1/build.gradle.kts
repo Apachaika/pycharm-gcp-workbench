@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "dev.vertexworkbench"
-version = "0.3.47"
+version = "0.3.48"
 
 val targetPyCharmVersion = providers.gradleProperty("targetPyCharmVersion").getOrElse("2026.1.2")
 val artifactSuffix = providers.gradleProperty("artifactSuffix").orNull

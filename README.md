@@ -1,9 +1,20 @@
 # Workbench Connector for GCP — PyCharm Plugin
 
-[![Latest release](https://img.shields.io/github/v/release/Apachaika/pycharm-gcp-workbench?label=release&sort=semver)](https://github.com/Apachaika/pycharm-gcp-workbench/releases/latest)
+[![Latest release](https://img.shields.io/github/v/release/Apachaika/pycharm-gcp-workbench?label=release&sort=semver&cacheSeconds=21600)](https://github.com/Apachaika/pycharm-gcp-workbench/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/Apachaika/pycharm-gcp-workbench/total?label=downloads&cacheSeconds=21600)](https://github.com/Apachaika/pycharm-gcp-workbench/releases)
 [![CI](https://github.com/Apachaika/pycharm-gcp-workbench/actions/workflows/ci.yml/badge.svg)](https://github.com/Apachaika/pycharm-gcp-workbench/actions/workflows/ci.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![PyCharm 2025.3 / 2026.1](https://img.shields.io/badge/PyCharm-2025.3%20%7C%202026.1-success)](https://www.jetbrains.com/pycharm/)
+
+<!--
+  After the plugin is approved on JetBrains Marketplace, uncomment the two
+  badges below (and the marketplace link in the Download table). They query
+  the Marketplace API directly (no GitHub-API rate limits):
+
+  [![JetBrains Marketplace](https://img.shields.io/jetbrains/plugin/v/dev.vertexworkbench.connector?label=marketplace&cacheSeconds=21600)](https://plugins.jetbrains.com/plugin/dev.vertexworkbench.connector)
+  [![Marketplace downloads](https://img.shields.io/jetbrains/plugin/d/dev.vertexworkbench.connector?cacheSeconds=21600)](https://plugins.jetbrains.com/plugin/dev.vertexworkbench.connector)
+-->
+
 
 Browse files, edit notebooks, run cells on the remote kernel, open Workbench terminals, and drive remote Git — all from PyCharm Professional, against your **Google Cloud Vertex AI Workbench** instances. No JupyterLab browser tab required.
 
@@ -110,25 +121,39 @@ Releases are **fully automated** by [.github/workflows/release.yml](.github/work
 
 ```bash
 # 1. Bump version (same number!) in BOTH build.gradle.kts files:
-#       version = "0.3.47"
+#       version = "0.3.48"
 #       -> build.gradle.kts
 #       -> pycharm-plugin-2026.1/build.gradle.kts
-# 2. Add a `## [0.3.47]` section at the top of CHANGELOG.md.
+# 2. Add a `## [0.3.48]` section at the top of CHANGELOG.md.
 # 3. Commit + push to main:
 git add -A
-git commit -m "Release v0.3.47"
+git commit -m "Release v0.3.48"
 git push origin main
 ```
 
 The workflow then:
 
 1. Reads `version = "..."` from both `build.gradle.kts` files (refuses to run on a version mismatch).
-2. Checks whether the tag `v0.3.47` already exists. If yes — no-op; bump the version again.
+2. Checks whether the tag `v0.3.48` already exists. If yes — no-op; bump the version again.
 3. Runs `./gradlew test buildPlugin` for **both** build lines in parallel.
-4. Renames the produced ZIPs to the stable filenames the README links to.
-5. Creates the `v0.3.47` git tag, opens a GitHub Release, attaches both ZIPs, and uses the matching `## [0.3.47]` block from `CHANGELOG.md` as the release notes (with an auto-generated commit list appended).
+4. Auto-publishes both ZIPs to JetBrains Marketplace via `./gradlew publishPlugin` (skipped with a notice when the `JETBRAINS_MARKETPLACE_TOKEN` secret is not configured).
+5. Renames the produced ZIPs to the stable filenames the README links to.
+6. Creates the `v0.3.48` git tag, opens a GitHub Release, attaches both ZIPs, and uses the matching `## [0.3.48]` block from `CHANGELOG.md` as the release notes (with an auto-generated commit list appended).
 
-Need to re-publish without bumping the version (e.g. to fix a release asset)? Open the **Actions** tab → **Release** → **Run workflow**, tick `force`. Every push and PR also runs the full test matrix via [.github/workflows/ci.yml](.github/workflows/ci.yml).
+Need to re-publish without bumping the version (e.g. to fix a release asset)? Open the **Actions** tab → **Release** → **Run workflow**, tick `force`. Want a GitHub-only release without touching Marketplace? Tick `skip_marketplace`. Every push and PR also runs the full test matrix via [.github/workflows/ci.yml](.github/workflows/ci.yml).
+
+### Required GitHub Actions secrets (set once)
+
+Open <https://github.com/Apachaika/pycharm-gcp-workbench/settings/secrets/actions> → **New repository secret** and add:
+
+| Secret | Required? | Where to get it |
+|--------|-----------|-----------------|
+| `JETBRAINS_MARKETPLACE_TOKEN` | Yes (for Marketplace publish) | <https://plugins.jetbrains.com/author/me/tokens> → permanent token with **Marketplace: upload plugins** scope |
+| `JETBRAINS_CERTIFICATE_CHAIN` | Optional (for signed ZIPs) | <https://plugins.jetbrains.com/docs/intellij/plugin-signing.html> |
+| `JETBRAINS_PRIVATE_KEY` | Optional | (same) |
+| `JETBRAINS_PRIVATE_KEY_PASSWORD` | Optional | (same) |
+
+Without the Marketplace token, the workflow still builds the ZIPs and creates the GitHub Release — only the Marketplace upload step is skipped.
 
 ## Privacy
 

@@ -23,6 +23,11 @@ on:
         required: false
         type: boolean
         default: false
+      skip_marketplace:
+        description: "Skip JetBrains Marketplace upload (only build and create GitHub Release)"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -134,6 +139,25 @@ jobs:
           path: ${{ matrix.line.dir }}/build/distributions/*.zip
           if-no-files-found: error
           retention-days: 14
+
+      - name: Publish to JetBrains Marketplace
+        if: github.event.inputs.skip_marketplace != 'true'
+        continue-on-error: true   # don't block the GitHub Release if Marketplace rejects/throttles
+        working-directory: ${{ matrix.line.dir }}
+        env:
+          JETBRAINS_MARKETPLACE_TOKEN: ${{ secrets.JETBRAINS_MARKETPLACE_TOKEN }}
+          JETBRAINS_CERTIFICATE_CHAIN:  ${{ secrets.JETBRAINS_CERTIFICATE_CHAIN }}
+          JETBRAINS_PRIVATE_KEY:        ${{ secrets.JETBRAINS_PRIVATE_KEY }}
+          JETBRAINS_PRIVATE_KEY_PASSWORD: ${{ secrets.JETBRAINS_PRIVATE_KEY_PASSWORD }}
+        run: |
+          if [[ -z "${JETBRAINS_MARKETPLACE_TOKEN}" ]]; then
+            echo "::notice title=Marketplace publish skipped::JETBRAINS_MARKETPLACE_TOKEN secret is not set. Add it at https://github.com/${{ github.repository }}/settings/secrets/actions to enable auto-publish."
+            exit 0
+          fi
+          ./gradlew publishPlugin \
+            -PtargetPyCharmVersion=${{ matrix.line.pycharm }} \
+            -PartifactSuffix=${{ matrix.line.suffix }} \
+            --no-daemon --stacktrace
 
   release:
     name: Tag + Publish GitHub Release
