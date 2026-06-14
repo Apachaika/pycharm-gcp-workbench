@@ -74,7 +74,7 @@ dependencies {
         zipSigner()
     }
 
-    implementation("com.google.code.gson:gson:2.13.2")
+    implementation("com.google.code.gson:gson:2.14.0")
 
     testImplementation(kotlin("test"))
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.11.4")
