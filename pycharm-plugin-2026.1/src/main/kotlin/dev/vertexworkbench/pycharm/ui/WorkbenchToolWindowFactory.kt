@@ -560,7 +560,7 @@ class WorkbenchToolWindowFactory : ToolWindowFactory {
             }
         })
 
-        val buttons = JBPanel<JBPanel<*>>(FlowLayout(FlowLayout.LEFT)).apply {
+        val buttons = JBPanel<JBPanel<*>>(WrapLayout(FlowLayout.LEFT, 6, 4)).apply {
             add(connect)
             add(refresh)
             add(otherInstance)
@@ -615,6 +615,7 @@ class WorkbenchToolWindowFactory : ToolWindowFactory {
         val syncPanel = RemoteSyncPanel(project) { selectedDirectoryPath() }
         val notebookPanel = RemoteNotebookPanel(project)
         val bootstrapPanel = RemoteBootstrapPanel(project, { selectedDirectoryPath() }, { openTerminal() })
+        val agentsPanel = RemoteAgentsPanel(project) { selectedDirectoryPath() }
         val resourceBar = RemoteResourceBar(project)
         val tabs = JTabbedPane().apply {
             addTab("Files", panel)
@@ -625,6 +626,7 @@ class WorkbenchToolWindowFactory : ToolWindowFactory {
             addTab("Sync", syncPanel.component())
             addTab("Notebooks", notebookPanel.component())
             addTab("Bootstrap", bootstrapPanel.component())
+            addTab("Agents", agentsPanel.component())
             addChangeListener {
                 if (selectedIndex >= 0 && getTitleAt(selectedIndex) == "Git") {
                     gitPanel.activate()

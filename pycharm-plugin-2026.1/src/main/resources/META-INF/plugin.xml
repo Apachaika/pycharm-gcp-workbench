@@ -24,6 +24,7 @@
         <projectService serviceImplementation="dev.vertexworkbench.pycharm.remote.RemoteCommandService"/>
         <projectService serviceImplementation="dev.vertexworkbench.pycharm.remote.RemoteSearchService"/>
         <projectService serviceImplementation="dev.vertexworkbench.pycharm.remote.RemoteRunService"/>
+        <projectService serviceImplementation="dev.vertexworkbench.pycharm.remote.RemoteAgentService"/>
         <projectService serviceImplementation="dev.vertexworkbench.pycharm.remote.RemoteStatusService"/>
         <projectService serviceImplementation="dev.vertexworkbench.pycharm.remote.RemoteBootstrapService"/>
         <projectService serviceImplementation="dev.vertexworkbench.pycharm.workspace.RemoteWorkspaceService"/>
@@ -31,6 +32,7 @@
         <projectService serviceImplementation="dev.vertexworkbench.pycharm.workspace.RemoteSelectiveSyncService"/>
         <projectService serviceImplementation="dev.vertexworkbench.pycharm.imports.RemoteImportIndexService"/>
         <projectService serviceImplementation="dev.vertexworkbench.pycharm.imports.RemoteImportResolverService"/>
+        <projectService serviceImplementation="dev.vertexworkbench.pycharm.imports.RemotePackageIndexService"/>
         <projectService serviceImplementation="dev.vertexworkbench.pycharm.git.RemoteGitCommandService"/>
         <projectService serviceImplementation="dev.vertexworkbench.pycharm.git.RemoteGitRepositoryService"/>
         <projectService serviceImplementation="dev.vertexworkbench.pycharm.git.RemoteGitStatusService"/>
@@ -51,6 +53,8 @@
                     icon="/icons/workbench.svg"
                     factoryClass="dev.vertexworkbench.pycharm.ui.WorkbenchToolWindowFactory"/>
         <gotoDeclarationHandler implementation="dev.vertexworkbench.pycharm.imports.RemoteImportGotoDeclarationHandler"/>
+        <completion.contributor language="Python"
+                                implementationClass="dev.vertexworkbench.pycharm.imports.RemoteImportCompletionContributor"/>
     </extensions>
 
     <extensions defaultExtensionNs="com.intellij.jupyter.core">

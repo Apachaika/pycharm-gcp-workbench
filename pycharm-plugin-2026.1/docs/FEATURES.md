@@ -78,6 +78,7 @@ There are two maintained build lines:
 | Text/base64/notebook parsing | ✅ | Jupyter Contents API formats |
 | `.ipynb` editor | ✅ | Opens in PyCharm notebook editor and assigns Workbench runtime |
 | Kernel/session on WBI | ✅ for 2025.3.x | Through bundled Jupyter runtime and Workbench connection config |
+| Remote import autocomplete | ✅ | After Connect, the plugin pulls top-level Python module names (`pkgutil.iter_modules` plus `sys.builtin_module_names`) from the Workbench in the background and injects them into Python `import` / `from` completion. Works in `.ipynb` cells and `.py` files; entries are tagged `Workbench` in the lookup popup. Cleared on Disconnect/Stop |
 
 ### Terminal
 
@@ -122,6 +123,7 @@ There are two maintained build lines:
 | Project bootstrap | ✅ | Optional `.venv`, dependency install, entry file open, and terminal launch |
 | Import index v2 | ✅ | Optional auto-index, roots, ignored dirs, and `src/` layout module names |
 | Recent connections | ✅ | Successful connections are stored in recent connection settings |
+| Agents tab (CLI) | ✅ | Tool Window `Agents` tab launches Gemini CLI, Codex CLI, or Claude Code in a Workbench terminal-as-editor-tab. First launch installs the agent via `npm install -g <pkg>` into `$HOME/.npm-global` (avoids root/EACCES on `/opt/conda/lib/node_modules`) and `exec`s the binary so install + run happen in the same visible terminal |
 
 ## Version notes
 

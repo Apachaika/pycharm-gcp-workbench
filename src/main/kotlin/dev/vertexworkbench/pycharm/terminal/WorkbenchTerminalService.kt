@@ -39,8 +39,13 @@ class WorkbenchTerminalService(
      * starts in that directory. The path is interpreted relative to the
      * terminal's startup cwd (usually `$HOME`, which matches the Jupyter
      * Contents API root on Vertex AI Workbench).
+     *
+     * When [initialCommand] is non-blank, it is sent verbatim through Terminado
+     * stdin right after the optional `cd`, followed by a newline so the shell
+     * executes it. Used by the Agents tab to install + run an agent CLI in the
+     * same terminal the user is watching.
      */
-    fun openTerminal(remoteDir: String? = null) {
+    fun openTerminal(remoteDir: String? = null, initialCommand: String? = null) {
         val connection = project.service<WorkbenchConnectionService>().activeConnection
             ?: throw WorkbenchTerminalException("Connect to a Vertex Workbench instance first.")
         val token = connection.localToken
@@ -57,6 +62,11 @@ class WorkbenchTerminalService(
         val trimmedDir = remoteDir?.trim()?.trimEnd('/')
         if (!trimmedDir.isNullOrBlank()) {
             runCatching { connector.write("cd ${RemoteShell.quote(trimmedDir)}\n") }
+        }
+
+        val trimmedCommand = initialCommand?.trim()
+        if (!trimmedCommand.isNullOrBlank()) {
+            runCatching { connector.write("$trimmedCommand\n") }
         }
 
         ApplicationManager.getApplication().invokeLater {

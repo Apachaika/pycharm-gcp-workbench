@@ -10,6 +10,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
 import dev.vertexworkbench.pycharm.api.WorkbenchApiClient
 import dev.vertexworkbench.pycharm.auth.GcloudAuthService
+import dev.vertexworkbench.pycharm.imports.RemotePackageIndexService
 import dev.vertexworkbench.pycharm.jupyter.WorkbenchJupyterConnectionRegistrar
 import dev.vertexworkbench.pycharm.jupyter.WorkbenchKernelAutoStarter
 import dev.vertexworkbench.pycharm.model.GcpProject
@@ -131,6 +132,7 @@ class WorkbenchConnectionService(
             currentWorkbenchState = selectedInstance.state
             rememberRecent(selectedInstance)
             reattachOpenNotebooks(selectedInstance)
+            project.service<RemotePackageIndexService>().refreshAsync()
             return connection
         } catch (t: Throwable) {
             currentWorkbenchState = "ERROR"
@@ -158,6 +160,7 @@ class WorkbenchConnectionService(
         project.service<LocalJupyterProxyService>().stop()
         project.service<WorkbenchJupyterConnectionRegistrar>().clear()
         project.service<GcloudAuthService>().invalidateAccessToken()
+        project.service<RemotePackageIndexService>().clear()
 
         val apiClient = project.service<WorkbenchApiClient>()
         apiClient.stopInstance(instance.resourceName)
@@ -170,6 +173,7 @@ class WorkbenchConnectionService(
         project.service<LocalJupyterProxyService>().stop()
         project.service<WorkbenchJupyterConnectionRegistrar>().clear()
         project.service<GcloudAuthService>().invalidateAccessToken()
+        project.service<RemotePackageIndexService>().clear()
     }
 
     private fun listInstancesAcrossProjects(
