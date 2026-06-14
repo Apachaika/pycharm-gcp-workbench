@@ -20,7 +20,7 @@ group = "dev.vertexworkbench"
 // single plugin id `dev.vertexworkbench.connector` — Marketplace disallows
 // two ZIPs with the same `version` in one channel, so the suffix is what
 // keeps them disambiguated.
-val pluginBaseVersion = "0.3.51"
+val pluginBaseVersion = "0.4.0"
 version = pluginBaseVersion
 
 val targetPyCharmVersion = providers.gradleProperty("targetPyCharmVersion").getOrElse("2025.3.5")
@@ -116,6 +116,10 @@ intellijPlatform {
         """.trimIndent()
 
         changeNotes = """
+            <h3>0.4.0</h3>
+            <ul>
+              <li>Add Agents tab and remote-import autocomplete</li>
+            </ul>
             <h3>0.3.51</h3>
             <ul>
               <li>List plugin as PyCharm Professional-compatible on Marketplace</li>
