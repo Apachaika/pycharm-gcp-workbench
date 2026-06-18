@@ -209,7 +209,7 @@ jobs:
 
       - name: Set up Gradle
         if: steps.bump.outputs.bump != 'none'
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
 
       - name: Build + publish 2025.3.x to Marketplace
         if: steps.bump.outputs.bump != 'none' && github.event.inputs.skip_marketplace != 'true'
