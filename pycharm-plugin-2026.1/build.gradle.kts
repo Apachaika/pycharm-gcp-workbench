@@ -23,7 +23,7 @@ group = "dev.vertexworkbench"
 // as `<pluginBaseVersion>` verbatim. Both ZIPs then coexist under plugin id
 // `dev.vertexworkbench.connector` in the stable channel; Marketplace serves
 // the correct ZIP per user's IDE build based on each ZIP's sinceBuild range.
-val pluginBaseVersion = "0.3.51"
+val pluginBaseVersion = "0.4.0"
 version = "$pluginBaseVersion-261"
 
 val targetPyCharmVersion = providers.gradleProperty("targetPyCharmVersion").getOrElse("2026.1.2")
@@ -119,6 +119,10 @@ intellijPlatform {
         """.trimIndent()
 
         changeNotes = """
+            <h3>0.4.0</h3>
+            <ul>
+              <li>Add Agents tab and remote-import autocomplete</li>
+            </ul>
             <h3>0.3.51</h3>
             <ul>
               <li>List plugin as PyCharm Professional-compatible on Marketplace</li>

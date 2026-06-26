@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-06-14
+
+### Added
+- Add Agents tab and remote-import autocomplete
+
+
 ## [0.3.51] — 2026-06-12
 
 ### Fixed
@@ -178,7 +184,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 See [docs/FEATURES.md](docs/FEATURES.md) for the full per-feature breakdown.
 
-[Unreleased]: https://github.com/Apachaika/pycharm-gcp-workbench/compare/v0.3.51...HEAD
+[Unreleased]: https://github.com/Apachaika/pycharm-gcp-workbench/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/Apachaika/pycharm-gcp-workbench/releases/tag/v0.4.0
 [0.3.51]: https://github.com/Apachaika/pycharm-gcp-workbench/releases/tag/v0.3.51
 [0.3.50]: https://github.com/Apachaika/pycharm-gcp-workbench/releases/tag/v0.3.50
 [0.3.49]: https://github.com/Apachaika/pycharm-gcp-workbench/releases/tag/v0.3.49
